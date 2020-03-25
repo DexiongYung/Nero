@@ -1,0 +1,9 @@
+{
+  "session_name": "=noise_35_percent",
+  "rnn_hidden_size": 256,
+  "rnn_num_layers": 4,
+  "char_error_rate": 0.0,
+  "lr": 0.001,
+  "num_steps": 50000,
+  "num_particles": 15
+}

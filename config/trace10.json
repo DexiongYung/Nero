@@ -1,0 +1,12 @@
+{
+  "session_name": "trace10",
+  "hidden_size": 256,
+  "peak_probs": 0.99,
+  "batch_size": 128,
+  "num_epochs": 250,
+  "learning_rate": 0.001,
+  "num_label": 100000,
+  "num_no_label": 100000,
+  "num_particle": 10,
+  "loss": 2
+}
