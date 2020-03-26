@@ -3,8 +3,11 @@ import pyro
 import pyro.distributions as dist
 import string
 import torch
+import pandas as pd 
 
+from utilities.dataset import NameDataset
 from const import *
+from torch.utils.data import DataLoader
 from handler.NameGenerator import NameGenerator
 from model.CharacterClassificationModel import CharacterClassificationModel
 from model.DenoisingAutoEncoder import DenoisingAutoEncoder
@@ -30,6 +33,9 @@ class NameParser():
     def __init__(self, num_layers: int = 2, hidden_sz: int = 64, peak_prob: float = 0.999, format_hidd_sz: int = 64,
                  noise_prob: int = 0.10):
         super().__init__()
+        df = pd.read_csv("dataset/cleaned.csv")
+        ds = NameDataset(df)
+        self.dl = DataLoader(ds, batch_size=1)
         # Load up BART output vocab to correlate with name generative models.
         config = load_json('config/first.json')
         self.output_chars = config['output']

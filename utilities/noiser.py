@@ -70,12 +70,13 @@ CHARACTER_REPLACEMENT['0'] = '-po9'
 
 def noise_name(x: str, allowed_chars: str, max_noise: int = 2):
     noise_type = distributions.Categorical(torch.tensor([1 / 5] * 5)).sample().item()
+    x_length = len(x)
 
     if noise_type == 0:
         return add_chars(x, allowed_chars, max_add=max_noise)
     elif noise_type == 1:
         return switch_chars(x, allowed_chars, max_switch=max_noise)
-    elif noise_type == 2:
+    elif noise_type == 2 and x_length != 1:
         return remove_chars(x, max_remove=max_noise)
     elif noise_type == 3:
         return switch_to_similar(x, allowed_chars, max_switch=max_noise)
@@ -84,15 +85,13 @@ def noise_name(x: str, allowed_chars: str, max_noise: int = 2):
 
 
 def noise_seperator(allowed_chars: str, x: str = " ", max_noise: int = 5):
-    noise_type = distributions.Categorical(torch.tensor([1 / 5] * 5)).sample().item()
+    noise_type = distributions.Categorical(torch.tensor([1 / 5] * 4)).sample().item()
 
     if noise_type == 0:
         return add_chars(x, allowed_chars, max_add=max_noise)
     elif noise_type == 1:
         return switch_chars(x, allowed_chars, max_switch=max_noise)
     elif noise_type == 2:
-        return remove_chars(x, max_remove=max_noise)
-    elif noise_type == 3:
         return '' * (distributions.Categorical(torch.tensor([1 / max_noise] * max_noise)).sample().item() + 1)
     else:
         return x

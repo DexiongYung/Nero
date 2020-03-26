@@ -281,14 +281,14 @@ def generate_full_name_and_char_class(firstname: str, middlenames: list, lastnam
     else:
         main_name = main_name.format(first=firstname, last=lastname)
         main_name_char_class = main_name_char_class.format(first="f" * len(firstname), last="l" * len(lastname))
+    
+    if len(main_name) != len(main_name_char_class):
+        raise Exception("Names are not the same length")
 
     return main_name, main_name_char_class
 
 
 def generate_obs_and_char_probs(main_name: str, char_classes: str, peak_prob: float):
-    if len(main_name) != len(char_classes):
-        raise Exception("Names are not the same length")
-
     character_format_class_probs = []
     observation_probs = []
 
