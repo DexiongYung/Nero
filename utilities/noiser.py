@@ -87,7 +87,7 @@ def noise_seperator(allowed_chars: str, x: str = " ", max_noise: int = 5):
     noise_type = distributions.Categorical(torch.tensor([1 / 5] * 5)).sample().item()
 
     if noise_type == 0:
-        return add_chars(x, allowed_chars, max_noise, max_add=max_noise - len(x))
+        return add_chars(x, allowed_chars, len(x) + max_noise, max_add=max_noise)
     elif noise_type == 1:
         return switch_chars(x, allowed_chars, max_switch=max_noise)
     elif noise_type == 2:
