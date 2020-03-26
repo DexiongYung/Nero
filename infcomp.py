@@ -83,7 +83,7 @@ class NameParser():
             has_middle = has_middle_name(main_format_id)
             middle_name_format_id = None
             if has_middle:
-                middle_name_format_id = int(dist.Categorical([1/MIDDLE_FORMAT_CLASS] * MIDDLE_FORMAT_CLASS).sample().item())
+                middle_name_format_id = int(dist.Categorical(torch.tensor([1/MIDDLE_FORMAT_CLASS] * MIDDLE_FORMAT_CLASS)).sample().item())
                 middlenames = []
 
                 has_mn_initial = has_middle_initial(middle_name_format_id)
