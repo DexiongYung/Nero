@@ -35,7 +35,7 @@ class NameParser():
         super().__init__()
         df = pd.read_csv("dataset/cleaned.csv")
         ds = NameDataset(df)
-        self.dl = DataLoader(ds, batch_size=1)
+        self.dl = DataLoader(ds, batch_size=1, shuffle=True)
         # Load up BART output vocab to correlate with name generative models.
         config = load_json('config/first.json')
         self.output_chars = config['output']
@@ -62,65 +62,120 @@ class NameParser():
 
     def model(self, observations={"output": 0}):
         with torch.no_grad():
-            # Sample format
-            # aux_format_id = int(dist.Categorical(AUX_FORMAT_PROBS).sample().item())
-            main_format_id = int(dist.Categorical(MAIN_FORMAT_PROBS).sample().item())
+            is_sample_from_data = 0 == int(dist.Categorical(torch.tensor([1/2] * 2)).sample().item())
+            noised_full_name = None
+            noised_character_classes = None
+            firstname, middlenames, lastname, middle_name_format_id, main_format_id, full_name = None, None, None, None, None, None
 
-            # Sample title, first name, middle name, last name, and/or suffix
-            firstname, middlenames, lastname = None, None, None
+            if is_sample_from_data:
+                name, first, middle, last = next(iter(self.dl))
+                name = name[0]
+                full_name = name
+                first = first[0]
+                firstname = first
+                middle = middle[0]
+                middlenames = middle
+                last = last[0]
+                lastname = last
+                first_length = len(first)
+                middle_length = len(middle)
+                last_length = len(last)
 
-            # if has_title(aux_format_id):
-            #     title = TITLE[int(pyro.sample(TITLE_ADD, dist.Categorical(TITLE_PROBS)).item())]
+                if first is not '':
+                    name = name.replace(first, "{first}")
 
-            # if has_suffix(aux_format_id):
-            #     suffix = SUFFIX[int(pyro.sample(SUFFIX_ADD, dist.Categorical(SUFFIX_PROBS)).item())]
+                if middle is not '':
+                    name = name.replace(middle, "{middle}")
+                
+                if last is not '':
+                    name = name.replace(last, "{last}")
 
-            # first & last name generation
-            firstname = sample_name(self.model_fn, FIRST_NAME_ADD)
-            lastname = sample_name(self.model_ln, LAST_NAME_ADD)
+                sample_real_name(first, FIRST_NAME_ADD, self.output_chars, self.num_output_chars, self.peak_prob)
+                sample_real_name(middle, f"{MIDDLE_NAME_ADD}_0", self.output_chars, self.num_output_chars, self.peak_prob)
+                sample_real_name(last, LAST_NAME_ADD, self.output_chars, self.num_output_chars, self.peak_prob)
 
-            # Middle Name generation
-            has_middle = has_middle_name(main_format_id)
-            middle_name_format_id = None
-            if has_middle:
-                middle_name_format_id = int(dist.Categorical(MIDDLE_NAME_FORMAT_PROBS).sample().item())
-                middlenames = []
+                printables = [char for char in string.ascii_letters + string.digits + string.punctuation]
+                
+                noised_first = first
+                if first_length > 0:
+                    noised_first = noise_name(first, printables)
+                
+                noised_middle = middle
+                if middle_length > 0:
+                    noised_middle = noise_name(middle, printables)
+                
+                noised_list = last
+                if last_length > 0:
+                    noised_last = noise_name(last, printables)
 
-                has_mn_initial = has_middle_initial(middle_name_format_id)
-                for i in range(num_middle_name(middle_name_format_id)):
-                    if has_mn_initial:
-                        initial_probs = torch.zeros(self.num_output_chars).to(DEVICE)
-                        initial_probs[26:52] = 1 / 26
-                        letter_idx = int(
-                            pyro.sample(f"{MIDDLE_NAME_ADD}_{i}_0", dist.Categorical(initial_probs)).item())
-                        initial_format_probs = torch.zeros(self.num_output_chars).to(DEVICE)
-                        initial_format_probs[self.output_chars.index(EOS)] = 1.
-                        pyro.sample(f"{MIDDLE_NAME_ADD}_{i}_1", dist.Categorical(initial_format_probs))
-                        middlename = self.output_chars[letter_idx]
-                    else:
-                        middlename = sample_name(self.model_fn, f"{MIDDLE_NAME_ADD}_{i}")
+                noised_character_classes = name
+                noised_full_name = name
 
-                    middlenames.append(middlename)
+                noised_full_name = noised_full_name.format(first=noised_first, middle=noised_middle, last=noised_last)
+                noised_character_classes = noised_character_classes.format(first="f" * len(noised_first), middle= "m" * len(noised_middle), last = "f" * len(noised_last))
 
-            printables = [char for char in string.ascii_letters + string.digits + string.punctuation]
-            noised_first = noise_name(firstname, printables)
-            noised_middles = []
-            if has_middle:
-                for i in range(len(middlenames)):
-                    middle_i = middlenames[i]
-                    noised_middles.append(noise_name(middle_i, printables))
-            noised_last = noise_name(lastname, printables)
+                if len(noised_full_name) != len(noised_character_classes):
+                    raise Exception("Full name and character classes must be equal")
+            else:
+                # Sample format
+                # aux_format_id = int(dist.Categorical(AUX_FORMAT_PROBS).sample().item())
+                main_format_id = int(dist.Categorical(MAIN_FORMAT_PROBS).sample().item())
 
-            full_name, character_classes = generate_full_name_and_char_class(noised_first,
-                                                                             noised_middles,
-                                                                             noised_last,
-                                                                             main_format_id,
-                                                                             middle_name_format_id)
+                # if has_title(aux_format_id):
+                #     title = TITLE[int(pyro.sample(TITLE_ADD, dist.Categorical(TITLE_PROBS)).item())]
 
-            allowed_separator_noise = [c for c in string.punctuation + string.whitespace]
-            sep = noise_seperator(allowed_separator_noise)
-            noised_full_name = full_name.replace(' ', sep)
-            noised_character_classes = character_classes.replace(' ', sep)
+                # if has_suffix(aux_format_id):
+                #     suffix = SUFFIX[int(pyro.sample(SUFFIX_ADD, dist.Categorical(SUFFIX_PROBS)).item())]
+
+                # first & last name generation
+                firstname = sample_name(self.model_fn, FIRST_NAME_ADD)
+                lastname = sample_name(self.model_ln, LAST_NAME_ADD)
+
+                # Middle Name generation
+                has_middle = has_middle_name(main_format_id)
+                middle_name_format_id = None
+                if has_middle:
+                    middle_name_format_id = int(dist.Categorical(MIDDLE_NAME_FORMAT_PROBS).sample().item())
+                    middlenames = []
+
+                    has_mn_initial = has_middle_initial(middle_name_format_id)
+                    for i in range(num_middle_name(middle_name_format_id)):
+                        if has_mn_initial:
+                            initial_probs = torch.zeros(self.num_output_chars).to(DEVICE)
+                            initial_probs[26:52] = 1 / 26
+                            letter_idx = int(
+                                pyro.sample(f"{MIDDLE_NAME_ADD}_{i}_0", dist.Categorical(initial_probs)).item())
+                            initial_format_probs = torch.zeros(self.num_output_chars).to(DEVICE)
+                            initial_format_probs[self.output_chars.index(EOS)] = 1.
+                            pyro.sample(f"{MIDDLE_NAME_ADD}_{i}_1", dist.Categorical(initial_format_probs))
+                            middlename = self.output_chars[letter_idx]
+                        else:
+                            middlename = sample_name(self.model_fn, f"{MIDDLE_NAME_ADD}_{i}")
+
+                        middlenames.append(middlename)
+
+                printables = [char for char in string.ascii_letters + string.digits + string.punctuation]
+                noised_first = noise_name(firstname, printables)
+                noised_middles = []
+                if has_middle:
+                    for i in range(len(middlenames)):
+                        middle_i = middlenames[i]
+                        noised_middles.append(noise_name(middle_i, printables))
+                noised_last = noise_name(lastname, printables)
+
+                full_name, character_classes = generate_full_name_and_char_class(noised_first,
+                                                                                noised_middles,
+                                                                                noised_last,
+                                                                                main_format_id,
+                                                                                middle_name_format_id)
+
+                allowed_separator_noise = [c for c in string.punctuation + string.whitespace]
+                sep = noise_seperator(allowed_separator_noise)
+                noised_full_name = full_name.replace(' ', sep)
+                noised_character_classes = character_classes.replace(' ', sep)
+
+                if len(noised_full_name) != len(noised_character_classes):
+                    raise Exception("Noised full name and char classes are different sizes in synthetic")
 
             observation_probs, character_format_probs = generate_obs_and_char_probs(noised_full_name, noised_character_classes,
                                                                                     self.peak_prob)

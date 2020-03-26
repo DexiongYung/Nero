@@ -222,6 +222,13 @@ def create_name_list(start: int, end: int, obs: torch.Tensor, classification: li
 
     return ret
 
+def sample_real_name(name: str, address: str, output: list, num_output: int, peak_probs: float):
+    name_length = len(name)
+
+    for i in range(name_length):
+        probs = torch.tensor([(1 - peak_probs) / (num_output - 1)] * num_output)
+        probs[output.index(name[i])] = peak_probs 
+        pyro.sample(f"{address}_{i}", dist.Categorical(probs.to(DEVICE)))
 
 def has_title(aux_format_id: int) -> bool:
     return '{title}' in AUX_CLASS[aux_format_id]
