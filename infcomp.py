@@ -67,7 +67,7 @@ class NameParser():
             main_format_id = int(dist.Categorical(MAIN_FORMAT_PROBS).sample().item())
 
             # Sample title, first name, middle name, last name, and/or suffix
-            firstname, middlename, lastname = None, None, None
+            firstname, middlenames, lastname = None, None, None
 
             # if has_title(aux_format_id):
             #     title = TITLE[int(pyro.sample(TITLE_ADD, dist.Categorical(TITLE_PROBS)).item())]
@@ -133,11 +133,11 @@ class NameParser():
             pyro.sample("output", dist.Categorical(torch.tensor(observation_probs[:obs_len]).to(DEVICE)),
                         obs=observations["output"])
 
-        parse = {'firstname': firstname, 'middlename': middlename, 'lastname': lastname}
+        parse = {'firstname': firstname, 'middlename': middlenames, 'lastname': lastname}
 
         print(
             "first name: {}, middle name: {}, last name: {}, middle name format: {}, main format: {}".format(
-                firstname, middlename, lastname, middle_name_format_id, main_format_id))
+                firstname, middlenames, lastname, middle_name_format_id, main_format_id))
 
         return full_name, parse
 

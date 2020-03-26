@@ -323,8 +323,8 @@ def generate_middle_obs_and_char_probs(middlenames: list, middle_name_format_id:
             middle_char_class = middle_char_class.format(mn_init="m" * len(middle_0), mn_init1="m" * len(middle_1))
             full_middle = full_middle.format(mn_init=middle_0, mn_init1=middle_1)
         else:
-            middle_char_class = middle_char_class.format(mn="m" * len(middle_0), mn_1="m" * len(middle_1))
-            full_middle = full_middle.format(mn=middle_0, mn_1=middle_1)
+            middle_char_class = middle_char_class.format(mn="m" * len(middle_0), mn1="m" * len(middle_1))
+            full_middle = full_middle.format(mn=middle_0, mn1=middle_1)
     else:
         middle = middlenames[0]
 
