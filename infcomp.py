@@ -96,14 +96,14 @@ class NameParser():
 
                     middlenames.append(middlename)
 
-            printables = [char for char in string.printable]
-            noised_first = noise_name(firstname, printables, len(firstname) + 2)
+            printables = [char for char in string.ascii_letters + string.digits]
+            noised_first = noise_name(firstname, printables)
             noised_middles = []
             if has_middle:
                 for i in range(len(middlenames)):
                     middle_i = middlenames[i]
-                    noised_middles.append(noise_name(middle_i, printables, len(middle_i) + 2))
-            noised_last = noise_name(lastname, printables, len(lastname) + 2)
+                    noised_middles.append(noise_name(middle_i, printables))
+            noised_last = noise_name(lastname, printables)
 
             full_name, character_classes = generate_full_name_and_char_class(noised_first,
                                                                              noised_middles,
@@ -111,8 +111,7 @@ class NameParser():
                                                                              main_format_id,
                                                                              middle_name_format_id)
 
-            allowed_separator_noise = [c for c in string.punctuation] + [c for c in string.whitespace] + [c for c in
-                                                                                                          string.digits]
+            allowed_separator_noise = [c for c in string.punctuation + string.whitespace + string.digits]
 
             if has_middle:
                 sep = noise_seperator(allowed_separator_noise)
