@@ -105,18 +105,33 @@ class NameParser():
                     noised_middles.append(noise_name(middle_i, printables, len(middle_i) + 2))
             noised_last = noise_name(lastname, printables, len(lastname) + 2)
 
-            observation_probs, character_format_probs, full_name = generate_obs_and_chars_probs(noised_first,
-                                                                                                noised_middles,
-                                                                                                noised_last,
-                                                                                                main_format_id,
-                                                                                                middle_name_format_id,
-                                                                                                self.peak_prob)
+            full_name, character_classes = generate_full_name_and_char_class(noised_first,
+                                                                             noised_middles,
+                                                                             noised_last,
+                                                                             main_format_id,
+                                                                             middle_name_format_id)
 
-            for i in range(len(observation_probs)):
+            allowed_separator_noise = [c for c in string.punctuation] + [c for c in string.whitespace] + [c for c in
+                                                                                                          string.digits]
+
+            if has_middle:
+                sep = noise_seperator(allowed_separator_noise)
+                full_name = full_name.replace(' ', sep)
+                character_classes = character_classes.replace(' ', sep)
+            else:
+                sep = noise_seperator(allowed_separator_noise)
+                full_name = full_name.replace(' ', sep)
+                character_classes = character_classes.replace(' ', sep)
+
+            observation_probs, character_format_probs = generate_obs_and_char_probs(full_name, character_classes,
+                                                                                    self.peak_prob)
+
+            obs_len = len(observation_probs)
+            for i in range(obs_len):
                 curr_format = pyro.sample(f"{CHAR_FORMAT_ADD}_{i}",
                                           dist.Categorical(torch.tensor(character_format_probs[i]).to(DEVICE)))
 
-            pyro.sample("output", dist.Categorical(torch.tensor(observation_probs[:len(observation_probs)]).to(DEVICE)),
+            pyro.sample("output", dist.Categorical(torch.tensor(observation_probs[:obs_len]).to(DEVICE)),
                         obs=observations["output"])
 
         parse = {'firstname': firstname, 'middlename': middlename, 'lastname': lastname}

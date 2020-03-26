@@ -1,4 +1,6 @@
 import math
+import torch
+import torch.distributions as distributions
 from random import randint
 
 CHARACTER_REPLACEMENT = dict()
@@ -66,25 +68,34 @@ CHARACTER_REPLACEMENT['9'] = '0oi8'
 CHARACTER_REPLACEMENT['0'] = '-po9'
 
 
-def noise_list(input: list, allowed_chars: str, max_len: int, max_noise: int = 2):
-    ret = []
-    for i in range(len(input)):
-        ret.append(noise_name(input[i], allowed_chars, max_len, max_noise))
-    return ret
-
-
 def noise_name(x: str, allowed_chars: str, max_length: int, max_noise: int = 2):
-    noise_type = randint(0, 3)
+    noise_type = distributions.Categorical(torch.tensor([1 / 5] * 5)).sample().item()
 
     if noise_type == 0:
         return add_chars(x, allowed_chars, max_length, max_add=max_noise)
     elif noise_type == 1:
         return switch_chars(x, allowed_chars, max_switch=max_noise)
-    elif 2:
+    elif noise_type == 2:
         return remove_chars(x, max_remove=max_noise)
+    elif noise_type == 3:
+        return switch_to_similar(x, allowed_chars, max_switch=max_noise)
     else:
-        x = remove_chars(x, max_remove=max_noise)
-        return add_chars(x, allowed_chars, max_add=max_noise)
+        return x
+
+
+def noise_seperator(allowed_chars: str, x: str = " ", max_noise: int = 5):
+    noise_type = distributions.Categorical(torch.tensor([1 / 5] * 5)).sample().item()
+
+    if noise_type == 0:
+        return add_chars(x, allowed_chars, max_noise, max_add=max_noise - len(x))
+    elif noise_type == 1:
+        return switch_chars(x, allowed_chars, max_switch=max_noise)
+    elif noise_type == 2:
+        return remove_chars(x, max_remove=max_noise)
+    elif noise_type == 3:
+        return '' * distributions.Categorical(torch.tensor([1 / max_noise] * max_noise)).sample().item() + 1
+    else:
+        return x
 
 
 def add_chars(x: str, allowed_chars: str, max_length: int, max_add: int):
@@ -92,9 +103,9 @@ def add_chars(x: str, allowed_chars: str, max_length: int, max_add: int):
         raise Exception(f"{max_add + len(x)} is greater than max length:{max_length}")
 
     ret = x
-    num_to_add = randint(0, max_add)
+    num_add = distributions.Categorical(torch.tensor([1 / max_add] * max_add)).sample().item()
 
-    for i in range(num_to_add):
+    for i in range(num_add):
         random_char = allowed_chars[randint(0, len(allowed_chars) - 1)]
         pos = randint(0, len(ret) - 1)
         ret = "".join((ret[:pos], random_char, ret[pos:]))
@@ -104,11 +115,30 @@ def add_chars(x: str, allowed_chars: str, max_length: int, max_add: int):
 
 def switch_chars(x: str, allowed_chars: str, max_switch: int):
     ret = x
-    num_to_switch = randint(0, min(math.floor(len(x) / 2), max_switch))
+    allowed_length = len(allowed_chars)
+    x_len = len(x)
+    num_switch = distributions.Categorical(torch.tensor([1 / max_switch] * max_switch)).sample().item()
 
-    for i in range(num_to_switch):
-        random_char = allowed_chars[randint(0, len(allowed_chars) - 1)]
-        pos = randint(0, len(ret) - 1)
+    for i in range(num_switch):
+        pos = distributions.Categorical(torch.tensor([1 / x_len] * x_len)).sample().item()
+        random_char = allowed_chars[
+            distributions.Categorical(torch.tensor([1 / allowed_length] * allowed_length)).sample().item()]
+        ret = "".join((ret[:pos], random_char, ret[pos + 1:]))
+
+    return ret
+
+
+def switch_to_similar(x: str, allowed_chars: str, max_switch: int):
+    ret = x
+    num_switch = distributions.Categorical(torch.tensor([1 / max_switch] * max_switch)).sample().item()
+
+    for i in range(num_switch):
+        x_length = len(x)
+        pos = distributions.Categorical(torch.tensor([1 / x_length] * x_length)).sample().item()
+        replacements = CHARACTER_REPLACEMENT[x[pos]]
+        replacements_length = len(replacements)
+        random_char = replacements[
+            distributions.Categorical(torch.tensor([1 / replacements_length] * replacements_length)).sample().item()]
         ret = "".join((ret[:pos], random_char, ret[pos + 1:]))
 
     return ret
@@ -116,10 +146,11 @@ def switch_chars(x: str, allowed_chars: str, max_switch: int):
 
 def remove_chars(x: str, max_remove: int):
     ret = x
-    num_to_remove = randint(0, min(math.floor(len(x) / 2), max_remove))
+    x_length = len(x)
+    num_remove = distributions.Categorical(torch.tensor([1 / max_remove] * max_remove)).sample().item()
 
-    for i in range(num_to_remove):
-        pos = randint(0, len(ret) - 1)
+    for i in range(num_remove):
+        pos = distributions.Categorical(torch.tensor([1 / x_length] * x_length)).sample().item()
         ret = "".join((ret[:pos], ret[pos + 1:]))
 
     return ret

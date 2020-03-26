@@ -266,8 +266,8 @@ def classify_using_format_model(model, input: torch.tensor, unpadded_len: torch.
     return pyro.sample(address, dist.Categorical(probs.to(DEVICE))).item()
 
 
-def generate_obs_and_chars_probs(firstname: str, middlenames: list, lastname: str, main_format_id: int,
-                                 middle_name_format_id: int, peak_prob: float) -> (torch.Tensor, torch.Tensor):
+def generate_full_name_and_char_class(firstname: str, middlenames: list, lastname: str, main_format_id: int,
+                                      middle_name_format_id: int) -> (torch.Tensor, torch.Tensor):
     main_name = MAIN_CLASS[main_format_id]
     main_name_char_class = main_name
 
@@ -282,18 +282,22 @@ def generate_obs_and_chars_probs(firstname: str, middlenames: list, lastname: st
         main_name = main_name.format(first=firstname, last=lastname)
         main_name_char_class = main_name_char_class.format(first="f" * len(firstname), last="l" * len(lastname))
 
+    return main_name, main_name_char_class
+
+
+def generate_obs_and_char_probs(main_name: str, char_classes: str, peak_prob: float):
+    if len(main_name) != len(char_classes):
+        raise Exception("Names are not the same length")
+
     character_format_class_probs = []
     observation_probs = []
-
-    if len(main_name) != len(main_name_char_class):
-        raise Exception("Names are not the same length")
 
     for i in range(len(main_name)):
         char_prob = [(1 - peak_prob) / len(FORMAT_CLASS)] * len(FORMAT_CLASS)
         observation_prob = [(1 - peak_prob) / len(PRINTABLE)] * len(PRINTABLE)
 
-        if main_name_char_class[i] in FORMAT_CLASS:
-            index = FORMAT_CLASS.index(main_name_char_class[i])
+        if char_classes[i] in FORMAT_CLASS:
+            index = FORMAT_CLASS.index(char_classes[i])
             char_prob[index] = peak_prob
         else:
             char_prob[5] = peak_prob
@@ -304,7 +308,7 @@ def generate_obs_and_chars_probs(firstname: str, middlenames: list, lastname: st
         character_format_class_probs.append(char_prob)
         observation_probs.append(observation_prob)
 
-    return observation_probs, character_format_class_probs, main_name
+    return observation_probs, character_format_class_probs
 
 
 def generate_middle_obs_and_char_probs(middlenames: list, middle_name_format_id: int):
