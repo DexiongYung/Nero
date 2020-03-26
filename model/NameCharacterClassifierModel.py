@@ -75,8 +75,6 @@ class NameCharacterClassifierModel(nn.Module):
             scores[2] = -float('inf')
             scores[4] = -float('inf')
             scores[5] = -float('inf')
-            scores[6] = -float('inf')
-            scores[7] = -float('inf')
             return scores
         elif sample == 5:
             return scores

@@ -83,7 +83,7 @@ class NameParser():
             has_middle = has_middle_name(main_format_id)
             middle_name_format_id = None
             if has_middle:
-                middle_name_format_id = int(dist.Categorical(MIDDLE_NAME_FORMAT_PROBS).sample().item())
+                middle_name_format_id = int(dist.Categorical([1/MIDDLE_FORMAT_CLASS] * MIDDLE_FORMAT_CLASS).sample().item())
                 middlenames = []
 
                 has_mn_initial = has_middle_initial(middle_name_format_id)
@@ -118,17 +118,11 @@ class NameParser():
                                                                              middle_name_format_id)
 
             allowed_separator_noise = [c for c in string.punctuation + string.whitespace + string.digits]
+            sep = noise_seperator(allowed_separator_noise)
+            noised_full_name = full_name.replace(' ', sep)
+            noised_character_classes = character_classes.replace(' ', sep)
 
-            if has_middle:
-                sep = noise_seperator(allowed_separator_noise)
-                full_name = full_name.replace(' ', sep)
-                character_classes = character_classes.replace(' ', sep)
-            else:
-                sep = noise_seperator(allowed_separator_noise)
-                full_name = full_name.replace(' ', sep)
-                character_classes = character_classes.replace(' ', sep)
-
-            observation_probs, character_format_probs = generate_obs_and_char_probs(full_name, character_classes,
+            observation_probs, character_format_probs = generate_obs_and_char_probs(noised_full_name, noised_character_classes,
                                                                                     self.peak_prob)
 
             obs_len = len(observation_probs)

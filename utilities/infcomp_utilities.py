@@ -21,7 +21,7 @@ MIDDLE_FORMAT_CLASS = ['{mn_init}.', '{mn_init}. {mn_init1}.', '{mn_init}', '{mn
                        '{mn} {mn_1}']
 TITLE = ['Mr', 'Mr.', 'Ms', 'Ms.', 'Mrs', 'Mrs.', 'Dr', 'Dr.', 'Sir', "Ma'am", 'Madam']
 SUFFIX = ['Sr', 'Sr.', 'Snr', 'Jr', 'Jr.', 'Jnr', 'Phd', 'phd', 'md', 'MD', 'I', 'II', 'III', 'IV']
-FORMAT_CLASS = ['t', 'f', 'm', 'l', 's', 'sep', PAD, SOS]
+FORMAT_CLASS = ['t', 'f', 'm', 'l', 's', 'sep']
 # title, first, middle, last, suffix, 'separator', pad, SOS, EOS just for consistency. SOS is required for Transformer
 NOISE_CLASS = ['n', 'a', 'r', 'd', PAD, SOS, EOS]
 # none, add, replace, delete, PAD, SOS, EOS

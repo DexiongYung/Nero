@@ -84,7 +84,7 @@ def noise_name(x: str, allowed_chars: str, max_noise: int = 2):
         return x
 
 
-def noise_seperator(allowed_chars: str, x: str = " ", max_noise: int = 5):
+def noise_seperator(allowed_chars: str, x: str = " ", max_noise: int = 3):
     noise_type = distributions.Categorical(torch.tensor([1 / 5] * 4)).sample().item()
 
     if noise_type == 0:
@@ -155,7 +155,7 @@ def remove_chars(x: str, max_remove: int):
     if x_length == 1:
         return x
     elif x_length > max_remove:
-        max_remove = x_length - 1
+        max_remove = x_length - 2
 
     num_remove = distributions.Categorical(torch.tensor([1 / max_remove] * max_remove)).sample().item()
 
@@ -164,4 +164,4 @@ def remove_chars(x: str, max_remove: int):
         pos = distributions.Categorical(torch.tensor([1 / x_length] * x_length)).sample().item()
         ret = "".join((ret[:pos], ret[pos + 1:]))
 
-    return ret
+    return ret.replace(" ", '')
