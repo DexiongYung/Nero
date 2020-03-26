@@ -18,7 +18,7 @@ SUFFIX_ADD = "suffix"
 AUX_CLASS = ['{main}', '{title} {main}', '{main} {suffix}', '{title} {main} {suffix}']
 MAIN_CLASS = ['{first} {last}', '{last}, {first}', '{first} {middle} {last}', '{last}, {first} {middle}']
 MIDDLE_FORMAT_CLASS = ['{mn_init}.', '{mn_init}. {mn_init1}.', '{mn_init}', '{mn_init} {mn_init1}', '{mn}',
-                       '{mn} {mn_1}']
+                       '{mn} {mn1}']
 TITLE = ['Mr', 'Mr.', 'Ms', 'Ms.', 'Mrs', 'Mrs.', 'Dr', 'Dr.', 'Sir', "Ma'am", 'Madam']
 SUFFIX = ['Sr', 'Sr.', 'Snr', 'Jr', 'Jr.', 'Jnr', 'Phd', 'phd', 'md', 'MD', 'I', 'II', 'III', 'IV']
 FORMAT_CLASS = ['t', 'f', 'm', 'l', 's', 'sep']
@@ -112,7 +112,7 @@ def middle_name_format(middlenames: list, middle_name_format_id: int) -> Tuple[s
         if is_middle_initial_format:
             full_middle_name = MIDDLE_FORMAT_CLASS[middle_name_format_id].format(mn_init=middle_0, mn_init_1=middle_1)
         else:
-            full_middle_name = MIDDLE_FORMAT_CLASS[middle_name_format_id].format(mn=middle_0, mn_1=middle_1)
+            full_middle_name = MIDDLE_FORMAT_CLASS[middle_name_format_id].format(mn=middle_0, mn1=middle_1)
     else:
         middle = middlenames[0]
         if is_middle_initial_format:
