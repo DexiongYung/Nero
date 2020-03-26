@@ -80,8 +80,9 @@ class NameParser():
                 middle_name_format_id = int(dist.Categorical(MIDDLE_NAME_FORMAT_PROBS).sample().item())
                 middlenames = []
 
+                has_mn_initial = has_middle_initial(middle_name_format_id)
                 for i in range(num_middle_name(middle_name_format_id)):
-                    if has_middle_initial(middle_name_format_id):
+                    if has_mn_initial:
                         initial_probs = torch.zeros(self.num_output_chars).to(DEVICE)
                         initial_probs[26:52] = 1 / 26
                         letter_idx = int(
@@ -89,19 +90,20 @@ class NameParser():
                         initial_format_probs = torch.zeros(self.num_output_chars).to(DEVICE)
                         initial_format_probs[self.output_chars.index(EOS)] = 1.
                         pyro.sample(f"{MIDDLE_NAME_ADD}_{i}_1", dist.Categorical(initial_format_probs))
-                        middlename = self.output_chars[letter_idx]  # For capital names
+                        middlename = self.output_chars[letter_idx]
                     else:
                         middlename = sample_name(self.model_fn, f"{MIDDLE_NAME_ADD}_{i}")
+
                     middlenames.append(middlename)
 
-            only_printables = [char for char in string.printable]
-            noised_first = noise_name(firstname, only_printables, len(firstname) + 2)
+            printables = [char for char in string.printable]
+            noised_first = noise_name(firstname, printables, len(firstname) + 2)
             noised_middles = []
             if has_middle:
                 for i in range(len(middlenames)):
                     middle_i = middlenames[i]
-                    noised_middles.append(noise_name(middle_i, only_printables, len(middle_i) + 2))
-            noised_last = noise_name(lastname, only_printables, len(lastname) + 2)
+                    noised_middles.append(noise_name(middle_i, printables, len(middle_i) + 2))
+            noised_last = noise_name(lastname, printables, len(lastname) + 2)
 
             observation_probs, character_format_probs, full_name = generate_obs_and_chars_probs(noised_first,
                                                                                                 noised_middles,
