@@ -68,7 +68,7 @@ CHARACTER_REPLACEMENT['9'] = '0oi8'
 CHARACTER_REPLACEMENT['0'] = '-po9'
 
 
-def noise_name(x: str, allowed_chars: str, max_length: int, max_noise: int = 2):
+def noise_name(x: str, allowed_chars: str, max_length: int, max_noise: int = 3):
     noise_type = distributions.Categorical(torch.tensor([1 / 5] * 5)).sample().item()
 
     if noise_type == 0:
@@ -93,7 +93,7 @@ def noise_seperator(allowed_chars: str, x: str = " ", max_noise: int = 5):
     elif noise_type == 2:
         return remove_chars(x, max_remove=max_noise)
     elif noise_type == 3:
-        return '' * distributions.Categorical(torch.tensor([1 / max_noise] * max_noise)).sample().item() + 1
+        return '' * (distributions.Categorical(torch.tensor([1 / max_noise] * max_noise)).sample().item() + 1)
     else:
         return x
 
