@@ -66,6 +66,7 @@ CHARACTER_REPLACEMENT['7'] = '8uy6'
 CHARACTER_REPLACEMENT['8'] = '9iu7'
 CHARACTER_REPLACEMENT['9'] = '0oi8'
 CHARACTER_REPLACEMENT['0'] = '-po9'
+CHARACTER_REPLACEMENT['-'] = '_=+~'
 
 
 def noise_name(x: str, allowed_chars: str, max_noise: int = 2):
