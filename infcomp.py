@@ -152,14 +152,15 @@ class NameParser():
         #                                          torch.IntTensor([len(suffix_tensor)]).to(DEVICE), SUFFIX_ADD)
         #     suffix = SUFFIX[sample]
 
-        pyro.module("first_name", self.guide_fn)
         if len(first) > 0:
+            pyro.module("first_name", self.guide_fn)
             input = name_to_idx_tensor(first[0], self.guide_fn.input)
             samples = self.guide_fn.forward(input, FIRST_NAME_ADD)
             first = ''.join(self.output_chars[s] for s in samples)
 
         middle_names = []
         if len(middles) > 0:
+            pyro.module("first_name", self.guide_fn)
             for i in range(len(middles)):
                 input = name_to_idx_tensor(middles[i], self.guide_fn.input)
                 samples = self.guide_fn.forward(input, f"{MIDDLE_NAME_ADD}_{i}")
