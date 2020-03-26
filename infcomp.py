@@ -195,7 +195,7 @@ class NameParser():
     def get_observes(self, name_string: str):
         if len(name_string) > MAX_STRING_LEN: raise Exception(f"Name string length cannot exceed {MAX_STRING_LEN}.")
         name_as_list = [c for c in name_string]
-        return name_to_idx_tensor(name_as_list, PRINTABLE, max_length=True)
+        return name_to_idx_tensor(name_as_list, PRINTABLE)
 
     def load_checkpoint(self, folder="nn_model", filename="checkpoint.pth.tar"):
         name_fp = os.path.join(folder, "name_" + filename)

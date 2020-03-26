@@ -243,11 +243,11 @@ def num_middle_name(middle_name_format_id: int) -> int:
     return len(list(re.finditer(r'{.+?}', MIDDLE_FORMAT_CLASS[middle_name_format_id])))
 
 
-def name_to_idx_tensor(name: list, allowed_chars: list, max_length: bool = False):
+def name_to_idx_tensor(name: list, allowed_chars: list):
     '''
     Convert name in list where each index is a char to tensor form
     '''
-    tensor_size = MAX_STRING_LEN if max_length else len(name)
+    tensor_size = len(name)
     tensor = torch.zeros(tensor_size).type(torch.LongTensor)
     for i in range(tensor_size):
         if i < len(name):
