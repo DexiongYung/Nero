@@ -83,7 +83,7 @@ class NameParser():
             has_middle = has_middle_name(main_format_id)
             middle_name_format_id = None
             if has_middle:
-                middle_name_format_id = int(dist.Categorical(MIDDLE_NAME_FORMAT_PROBS)).sample().item())
+                middle_name_format_id = int(dist.Categorical(MIDDLE_NAME_FORMAT_PROBS).sample().item())
                 middlenames = []
 
                 has_mn_initial = has_middle_initial(middle_name_format_id)
