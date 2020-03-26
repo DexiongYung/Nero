@@ -102,7 +102,7 @@ class NameParser():
 
                     middlenames.append(middlename)
 
-            printables = [char for char in string.ascii_letters + string.digits]
+            printables = [char for char in string.ascii_letters + string.digits + string.punctuation]
             noised_first = noise_name(firstname, printables)
             noised_middles = []
             if has_middle:
@@ -117,7 +117,7 @@ class NameParser():
                                                                              main_format_id,
                                                                              middle_name_format_id)
 
-            allowed_separator_noise = [c for c in string.punctuation + string.whitespace + string.digits]
+            allowed_separator_noise = [c for c in string.punctuation + string.whitespace]
             sep = noise_seperator(allowed_separator_noise)
             noised_full_name = full_name.replace(' ', sep)
             noised_character_classes = character_classes.replace(' ', sep)
