@@ -191,14 +191,6 @@ class NameParser():
             results.append(self.model()[0])
         return results
 
-    def test_mode(self):
-        self.guide_format.eval()
-        self.guide_aux_format.eval()
-        self.guide_main_format.eval()
-        self.guide_mn_format.eval()
-        self.guide_title.eval()
-        self.guide_suffix.eval()
-
     def get_observes(self, name_string: str):
         if len(name_string) > MAX_STRING_LEN: raise Exception(f"Name string length cannot exceed {MAX_STRING_LEN}.")
         name_as_list = [c for c in name_string]

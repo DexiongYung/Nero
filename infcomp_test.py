@@ -20,9 +20,6 @@ config = {"session_name": "UNNAMED_SESSION", "rnn_hidden_size": 256, "rnn_num_la
 
 name_parser = NameParser(config['rnn_num_layers'], config['rnn_hidden_size'])
 name_parser.load_checkpoint(filename=f"{config['session_name']}.pth.tar")
-# name_parser.test_mode()
-
-# print(name_parser.generate(3))
 
 print(f"Parsing Name: {args.name}")
 if args.true_posterior:
