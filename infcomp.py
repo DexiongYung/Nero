@@ -208,7 +208,7 @@ class NameParser():
         name_fp = os.path.join(folder, "name_" + filename)
         format_fp = os.path.join(folder, "format_" + filename)
         title_suffix_fp = os.path.join(folder, "title_suffix_" + filename)
-        if not os.path.exists(name_fp) or not os.path.exists(format_fp) or not os.path.exists(noise_fp):
+        if not os.path.exists(name_fp) or not os.path.exists(format_fp) or not os.path.exists(title_suffix_fp):
             raise Exception(f"No model in path {folder}")
         name_content = torch.load(name_fp, map_location=DEVICE)
         format_content = torch.load(format_fp, map_location=DEVICE)
