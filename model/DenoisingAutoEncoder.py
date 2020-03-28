@@ -1,5 +1,6 @@
 import pyro
 import pyro.distributions as dist
+import string
 import torch
 import torch.nn as nn
 
@@ -26,7 +27,9 @@ class DenoisingAutoEncoder(nn.Module):
         hidden = None
 
         for i in range(len(input)):
-            _, hidden = self.encoder.forward(torch.LongTensor([input[i].item()]).unsqueeze(1).to(DEVICE), hidden)
+            printable_idx = input[i].item()
+
+            _, hidden = self.encoder.forward(torch.LongTensor([printable_idx]).unsqueeze(1).to(DEVICE), hidden)
 
         decoder_input = torch.LongTensor([self.output.index(PAD)]).to(DEVICE)
         outputs = []

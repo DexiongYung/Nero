@@ -11,14 +11,17 @@ parser.add_argument('--name', help='name to parse', nargs='?', default='Wood, Fr
 parser.add_argument('--true_posterior', help='whether to sample from p(z|x) or q(z|x)', nargs='?', default=False,
                     type=bool)
 parser.add_argument('--num_particles', help='# of particles to use for SIS', nargs='?', default=10, type=int)
+parser.add_argument('--num_samples', help='# samples', nargs='?', default=10, type=int)
 
 args = parser.parse_args()
 
-# config = load_json(args.config)
-config = {"session_name": "UNNAMED_SESSION", "rnn_hidden_size": 256, "rnn_num_layers": 4, "char_error_rate": 0.01,
-          "lr": 0.001, "num_steps": 50000, "num_particles": 25}
+config = load_json(args.config)
 
-name_parser = NameParser(config['rnn_num_layers'], config['rnn_hidden_size'])
+rnn_hidden_size = config['rnn_hidden_size']
+rnn_num_layer = config['rnn_num_layers']
+format_hidden_size = config['format_hidden_size']
+
+name_parser = NameParser(rnn_num_layer, rnn_hidden_size, format_hidden_size)
 name_parser.load_checkpoint(filename=f"{config['session_name']}.pth.tar")
 
 print(f"Parsing Name: {args.name}")
@@ -26,7 +29,7 @@ if args.true_posterior:
     csis = pyro.infer.CSIS(name_parser.model, name_parser.guide, pyro.optim.Adam({'lr': 0.001}),
                            num_inference_samples=args.num_particles)
     posterior = csis.run(observations={'output': name_parser.get_observes(args.name)})
-    csis_samples = [posterior() for _ in range(10)]
+    csis_samples = [posterior() for _ in range(args.num_samples)]
     for j, sample in enumerate(csis_samples):
         rv_names = sample.stochastic_nodes
 
@@ -65,6 +68,6 @@ if args.true_posterior:
                   'suffix': suffix}
         print(f"Parse {j}: {result}")
 else:
-    for i in range(10):
+    for i in range(args.num_samples):
         result = name_parser.infer([args.name])
         print(f"Parse {i}: {result}")

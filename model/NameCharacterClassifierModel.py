@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 
 from const import *
+from utilities.infcomp_utilities import FORMAT_CLASS
 
 
 class NameCharacterClassifierModel(nn.Module):
@@ -22,69 +23,63 @@ class NameCharacterClassifierModel(nn.Module):
         self.num_layers = num_layers
         self.embed_sz = embed_sz
         self.input_pad_idx = self.input.index(PAD)
-        self.fc1_input_sz = self.num_layers * self.hidden_sz * 4
-
         self.softmax = nn.Softmax(0)
-        self.fc1 = nn.Linear(self.fc1_input_sz, self.output_sz)
         self.embed = nn.Embedding(self.input_sz, self.embed_sz, padding_idx=self.input_pad_idx)
-        self.forward_lstm = nn.LSTM(self.embed_sz, self.hidden_sz, num_layers=num_layers)
-        self.backward_lstm = nn.LSTM(self.embed_sz, self.hidden_sz, num_layers=num_layers)
-        self.dropout = nn.Dropout(drop_out)
+        self.lstm = nn.LSTM(self.embed_sz, self.hidden_sz, num_layers=num_layers, bidirectional=True)
+        self.fc1 = nn.Linear(self.hidden_sz * 2, self.hidden_sz)
+        self.activation = nn.Sigmoid()
+        self.fc2 = nn.Linear(self.hidden_sz, self.output_sz)
         self.to(DEVICE)
 
     def forward(self, input: torch.LongTensor, address: str):
-        outputs = []
-        input_len = len(input)
-        hidden_states = []
-        for i in range(input_len):
-            hidden_states.append([])
+        embedded_input = self.embed(input).unsqueeze(1)
+        length_tensor = torch.tensor([MAX_STRING_LEN]).to(DEVICE)
 
-        forward_hidden = self.init_hidden()
-        backward_hidden = self.init_hidden()
+        pps_input = torch.nn.utils.rnn.pack_padded_sequence(embedded_input, length_tensor)
+        X, hidden = self.lstm(pps_input, self.init_hidden())
+        X, _ = torch.nn.utils.rnn.pad_packed_sequence(X)
 
-        for i in range(input_len):
-            forward_input = self.embed(input[i]).unsqueeze(0)
-            _, forward_hidden = self.forward_lstm(forward_input.unsqueeze(0), forward_hidden)
-            hidden_states[i].append(forward_hidden)
+        output = []
+        sample = FORMAT_CLASS.index(SOS)
 
-        for i in range(input_len):
-            backward_idx = input_len - i - 1
-            backward_input = self.embed(input[backward_idx]).unsqueeze(0)
-            _, backward_hidden = self.backward_lstm(backward_input.unsqueeze(0), backward_hidden)
-            hidden_states[backward_idx].append(backward_hidden)
+        for i in range(X.shape[0]):
+            input = X[i].reshape(2 * self.hidden_sz)
+            fc1_output = self.fc1.forward(input)
+            activation_output = self.activation(fc1_output)
+            fc2_output = self.fc2.forward(activation_output)
+            FA_scores = self.zero_bad_moves(fc2_output, sample, i == 0)
+            probs = self.softmax(FA_scores)
 
-        sample = 5  # 5 = sep which means it can be anything after
-        for i in range(input_len):
-            hidden_1 = hidden_states[i][0]
-            hidden_2 = hidden_states[i][1]
-            hidden_1_cat = torch.cat((hidden_1[0], hidden_1[1]), 0)
-            hidden_2_cat = torch.cat((hidden_2[0], hidden_2[1]), 0)
-            hidden = torch.cat((hidden_1_cat, hidden_2_cat), 2)
-            hidden = hidden.reshape(self.fc1_input_sz)
-            scores = self.fc1.forward(hidden)
-            # scores = self.dropout(scores)
-            scores = self.zero_bad_moves(scores, sample, i == 0)
-            probs = self.softmax(scores)
-            sample = int(pyro.sample(f"{address}_{i}", dist.Categorical(probs)).item())
-            outputs.append(sample)
+            sample = pyro.sample(f"{address}_{i}", dist.Categorical(probs)).item()
+            output.append(sample)
 
-        return outputs
+        return output
 
     def zero_bad_moves(self, scores: torch.Tensor, sample: int, first_sample: bool = False):
-        if first_sample and sample == 5:
-            scores[2] = -float('inf')
-            scores[4] = -float('inf')
-            scores[5] = -float('inf')
+        space_idx = FORMAT_CLASS.index(SPACE)
+        comma_idx = FORMAT_CLASS.index(COMMA)
+        dot_idx = FORMAT_CLASS.index(DOT)
+
+        if first_sample:
+            scores[FORMAT_CLASS.index('m')] = -float('inf')
+            scores[FORMAT_CLASS.index(PAD)] = -float('inf')
+            scores[FORMAT_CLASS.index('s')] = -float('inf')
             return scores
-        elif sample == 5:
+        elif sample == space_idx or sample == comma_idx or sample == dot_idx:
             return scores
         else:
             for i in range(len(self.output)):
-                if i != sample and i != 5:
+                if i != sample and i != dot_idx and i != comma_idx and i != space_idx:
                     scores[i] = -100000
 
             return scores
 
+    def one_hot_encode(self, previous_sample: int):
+        ret = torch.zeros(len(FORMAT_CLASS)).to(DEVICE)
+        ret[previous_sample] = 1
+
+        return ret
+
     def init_hidden(self, batch_sz: int = 1):
-        return (torch.zeros(self.num_layers, batch_sz, self.hidden_sz).to(DEVICE),
-                torch.zeros(self.num_layers, batch_sz, self.hidden_sz).to(DEVICE))
+        return (torch.zeros(self.num_layers * 2, batch_sz, self.hidden_sz).to(DEVICE),
+                torch.zeros(self.num_layers * 2, batch_sz, self.hidden_sz).to(DEVICE))

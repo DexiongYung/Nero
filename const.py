@@ -7,6 +7,11 @@ SOS = 'SOS'  # '<SOS>'
 EOS = 'EOS'  # '<EOS>'
 PAD = 'PAD'  # '<PAD>'
 
+# Constants just for FORMAT_CLASS
+SPACE = ' '
+DOT = '.'
+COMMA = ','
+
 # for infcomp.py
 MAX_OUTPUT_LEN = 10
 MAX_STRING_LEN = 35

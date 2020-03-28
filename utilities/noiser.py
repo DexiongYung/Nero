@@ -82,7 +82,7 @@ def noise_name(x: str, allowed_chars: str, max_noise: int = 2):
         ret = remove_chars(x, max_remove=max_noise)
     elif noise_type == 3:
         ret = switch_to_similar(x, allowed_chars, max_switch=max_noise)
-    
+
     return ret
 
 
@@ -136,7 +136,7 @@ def switch_to_similar(x: str, allowed_chars: str, max_switch: int):
 
     if max_switch > x_length:
         max_switch = x_length
-    
+
     num_switch = distributions.Categorical(torch.tensor([1 / max_switch] * max_switch)).sample().item()
 
     for i in range(num_switch):

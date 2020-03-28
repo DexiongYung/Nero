@@ -3,11 +3,8 @@ import pyro
 import pyro.distributions as dist
 import string
 import torch
-import pandas as pd 
 
-from utilities.dataset import NameDataset
 from const import *
-from torch.utils.data import DataLoader
 from handler.NameGenerator import NameGenerator
 from model.CharacterClassificationModel import CharacterClassificationModel
 from model.DenoisingAutoEncoder import DenoisingAutoEncoder
@@ -15,7 +12,7 @@ from model.FormatModel import NameFormatModel
 from model.NameCharacterClassifierModel import NameCharacterClassifierModel
 from utilities.config import *
 from utilities.infcomp_utilities import *
-from utilities.noiser import *
+from utilities.noiser import noise_name, noise_seperator
 
 
 class NameParser():
@@ -30,12 +27,9 @@ class NameParser():
     peak_prob: The max expected probability
     """
 
-    def __init__(self, num_layers: int = 2, hidden_sz: int = 64, peak_prob: float = 0.999, format_hidd_sz: int = 64,
-                 noise_prob: int = 0.10):
+    def __init__(self, num_layers: int, hidden_sz: int, format_hidden_sz: int, peak_prob: float = 0.99,
+                 noise_prob: int = 0.1):
         super().__init__()
-        df = pd.read_csv("dataset/cleaned.csv")
-        ds = NameDataset(df)
-        self.dl = DataLoader(ds, batch_size=1, shuffle=True)
         # Load up BART output vocab to correlate with name generative models.
         config = load_json('config/first.json')
         self.output_chars = config['output']
@@ -51,9 +45,16 @@ class NameParser():
         self.guide_ln = DenoisingAutoEncoder(PRINTABLE, self.output_chars, hidden_sz, num_layers)
         # Format classifier neural networks
         self.guide_format = NameCharacterClassifierModel(PRINTABLE, hidden_sz, FORMAT_CLASS)
+        self.guide_noise = CharacterClassificationModel(PRINTABLE, hidden_sz, NOISE_CLASS)
         # Title / Suffix classifier neural networks
         self.guide_title = NameFormatModel(PRINTABLE, hidden_sz=hidden_sz, output_sz=len(TITLE))
         self.guide_suffix = NameFormatModel(PRINTABLE, hidden_sz=hidden_sz, output_sz=len(SUFFIX))
+        self.guide_aux_format = NameFormatModel(PRINTABLE, hidden_sz=format_hidden_sz,
+                                                output_sz=AUX_FORMAT_DIM)
+        self.guide_main_format = NameFormatModel(PRINTABLE, hidden_sz=format_hidden_sz,
+                                                 output_sz=MAIN_FORMAT_DIM)
+        self.guide_mn_format = NameFormatModel(PRINTABLE, hidden_sz=format_hidden_sz,
+                                               output_sz=MIDDLE_NAME_FORMAT_DIM)
         # Hyperparameters
         self.peak_prob = peak_prob
         self.num_layers = num_layers
@@ -62,164 +63,143 @@ class NameParser():
 
     def model(self, observations={"output": 0}):
         with torch.no_grad():
-            is_sample_from_data = 0 == int(dist.Categorical(torch.tensor([1/2] * 2)).sample().item())
-            noised_full_name = None
-            noised_character_classes = None
-            firstname, middlenames, lastname, middle_name_format_id, main_format_id, full_name = None, None, None, None, None, None
+            # Sample format
+            aux_format_id = int(pyro.sample(AUX_FORMAT_ADD, dist.Categorical(AUX_FORMAT_PROBS)).item())
+            main_format_id = int(pyro.sample(MAIN_FORMAT_ADD, dist.Categorical(MAIN_FORMAT_PROBS)).item())
 
-            if is_sample_from_data:
-                name, first, middle, last = next(iter(self.dl))
-                name = name[0]
-                full_name = name
-                first = first[0]
-                firstname = first
-                middle = middle[0]
-                middlenames = middle
-                last = last[0]
-                lastname = last
-                first_length = len(first)
-                middle_length = len(middle)
-                last_length = len(last)
+            # Sample title, first name, middle name, last name, and/or suffix
+            firstname, middlename, lastname, title, suffix = None, None, None, None, None
+            has_middle = has_middle_name(main_format_id)
+            is_title = has_title(aux_format_id)
+            is_suffix = has_suffix(aux_format_id)
 
-                if first is not '':
-                    name = name.replace(first, "{first}")
+            if is_title:
+                title = TITLE[int(pyro.sample(TITLE_ADD, dist.Categorical(TITLE_PROBS)).item())]
 
-                if middle is not '':
-                    name = name.replace(middle, "{middle}")
-                
-                if last is not '':
-                    name = name.replace(last, "{last}")
+            if is_suffix:
+                suffix = SUFFIX[int(pyro.sample(SUFFIX_ADD, dist.Categorical(SUFFIX_PROBS)).item())]
 
-                sample_real_name(first, FIRST_NAME_ADD, self.output_chars, self.num_output_chars, self.peak_prob)
-                sample_real_name(middle, f"{MIDDLE_NAME_ADD}_0", self.output_chars, self.num_output_chars, self.peak_prob)
-                sample_real_name(last, LAST_NAME_ADD, self.output_chars, self.num_output_chars, self.peak_prob)
+            # first & last name generation
+            firstname = sample_name(self.model_fn, FIRST_NAME_ADD)
+            lastname = sample_name(self.model_ln, LAST_NAME_ADD)
 
-                printables = [char for char in string.ascii_letters + string.digits + string.punctuation]
-                
-                noised_first = first
-                if first_length > 0:
-                    noised_first = noise_name(first, printables)
-                
-                noised_middle = middle
-                if middle_length > 0:
-                    noised_middle = noise_name(middle, printables)
-                
-                noised_list = last
-                if last_length > 0:
-                    noised_last = noise_name(last, printables)
+            # Middle Name generation
+            middle_name_format_id = None
 
-                noised_character_classes = name
-                noised_full_name = name
+            if has_middle:
+                middle_name_format_id = int(
+                    pyro.sample(MIDDLE_FORMAT_ADD, dist.Categorical(MIDDLE_NAME_FORMAT_PROBS)).item())
+                middlenames = []
 
-                noised_full_name = noised_full_name.format(first=noised_first, middle=noised_middle, last=noised_last)
-                noised_character_classes = noised_character_classes.format(first="f" * len(noised_first), middle= "m" * len(noised_middle), last = "f" * len(noised_last))
+                for i in range(num_middle_name(middle_name_format_id)):
+                    if has_middle_initial(middle_name_format_id):
+                        initial_probs = torch.zeros(self.num_output_chars).to(DEVICE)
+                        initial_probs[26:52] = 1 / 26
+                        letter_idx = int(
+                            pyro.sample(f"{MIDDLE_NAME_ADD}_{i}_0", dist.Categorical(initial_probs)).item())
+                        initial_format_probs = torch.zeros(self.num_output_chars).to(DEVICE)
+                        initial_format_probs[-2] = 1.
+                        pyro.sample(f"{MIDDLE_NAME_ADD}_{i}_1", dist.Categorical(initial_format_probs))
+                        middlename = self.output_chars[letter_idx]  # For capital names
+                    else:
+                        middlename = sample_name(self.model_fn, f"{MIDDLE_NAME_ADD}_{i}")
+                    middlenames.append(middlename)
 
-                if len(noised_full_name) != len(noised_character_classes):
-                    raise Exception("Full name and character classes must be equal")
-            else:
-                # Sample format
-                # aux_format_id = int(dist.Categorical(AUX_FORMAT_PROBS).sample().item())
-                main_format_id = int(dist.Categorical(MAIN_FORMAT_PROBS).sample().item())
+            allowed_noise = [c for c in string.ascii_letters + string.digits + string.punctuation]
+            noised_first = noise_name(firstname, allowed_noise)
+            noised_last = noise_name(lastname, allowed_noise)
+            noised_title, noised_suffix = None, None
 
-                # if has_title(aux_format_id):
-                #     title = TITLE[int(pyro.sample(TITLE_ADD, dist.Categorical(TITLE_PROBS)).item())]
+            if is_suffix:
+                noised_suffix = noise_name(suffix, allowed_noise)
 
-                # if has_suffix(aux_format_id):
-                #     suffix = SUFFIX[int(pyro.sample(SUFFIX_ADD, dist.Categorical(SUFFIX_PROBS)).item())]
+            if is_title:
+                noised_title = noise_name(title, allowed_noise)
 
-                # first & last name generation
-                firstname = sample_name(self.model_fn, FIRST_NAME_ADD)
-                lastname = sample_name(self.model_ln, LAST_NAME_ADD)
+            main_section = generate_main_name(main_format_id, noised_first, noised_last)
+            main_section_char_class = generate_main_name_char_class(main_format_id, noised_first, noised_last)
 
-                # Middle Name generation
-                has_middle = has_middle_name(main_format_id)
-                middle_name_format_id = None
-                if has_middle:
-                    middle_name_format_id = int(dist.Categorical(MIDDLE_NAME_FORMAT_PROBS).sample().item())
-                    middlenames = []
+            aux_section = generate_aux_name(aux_format_id, noised_title, noised_suffix)
+            aux_section_char_class = generate_aux_name_char_class(aux_format_id, noised_title, noised_suffix)
 
-                    has_mn_initial = has_middle_initial(middle_name_format_id)
-                    for i in range(num_middle_name(middle_name_format_id)):
-                        if has_mn_initial:
-                            initial_probs = torch.zeros(self.num_output_chars).to(DEVICE)
-                            initial_probs[26:52] = 1 / 26
-                            letter_idx = int(
-                                pyro.sample(f"{MIDDLE_NAME_ADD}_{i}_0", dist.Categorical(initial_probs)).item())
-                            initial_format_probs = torch.zeros(self.num_output_chars).to(DEVICE)
-                            initial_format_probs[self.output_chars.index(EOS)] = 1.
-                            pyro.sample(f"{MIDDLE_NAME_ADD}_{i}_1", dist.Categorical(initial_format_probs))
-                            middlename = self.output_chars[letter_idx]
-                        else:
-                            middlename = sample_name(self.model_fn, f"{MIDDLE_NAME_ADD}_{i}")
+            full_name = aux_section.format(main=main_section)
+            character_classes = aux_section_char_class.format(main=main_section_char_class)
 
-                        middlenames.append(middlename)
+            noised_middles = []
+            if has_middle:
+                for i in range(len(middlenames)):
+                    noised_middles.append(noise_name(middlenames[i], allowed_noise))
+                middle_section = generate_middle_name(middle_name_format_id, noised_middles)
+                middle_char_class = generate_middle_name_char_class(middle_name_format_id, noised_middles)
 
-                printables = [char for char in string.ascii_letters + string.digits + string.punctuation]
-                noised_first = noise_name(firstname, printables)
-                noised_middles = []
-                if has_middle:
-                    for i in range(len(middlenames)):
-                        middle_i = middlenames[i]
-                        noised_middles.append(noise_name(middle_i, printables))
-                noised_last = noise_name(lastname, printables)
+                full_name = full_name.format(middle=middle_section)
+                character_classes = character_classes.format(middle=middle_char_class)
 
-                full_name, character_classes = generate_full_name_and_char_class(noised_first,
-                                                                                noised_middles,
-                                                                                noised_last,
-                                                                                main_format_id,
-                                                                                middle_name_format_id)
+            if len(full_name) != len(character_classes):
+                raise Exception("Full name and character classes aren't the same length")
+            elif len(full_name) < MAX_STRING_LEN:
+                full_name = [c for c in full_name] + [PAD] * (MAX_STRING_LEN - len(full_name))
+                character_classes = [c for c in character_classes] + [PAD] * (MAX_STRING_LEN - len(character_classes))
 
-                allowed_separator_noise = [c for c in string.punctuation + string.whitespace]
-                sep = noise_seperator(allowed_separator_noise)
-                noised_full_name = full_name.replace(' ', sep)
-                noised_character_classes = character_classes.replace(' ', sep)
+            character_probs = generate_probabilities(character_classes, FORMAT_CLASS, self.peak_prob)
+            observation_probs = generate_probabilities(full_name, PRINTABLE, self.peak_prob)
 
-                if len(noised_full_name) != len(noised_character_classes):
-                    raise Exception("Noised full name and char classes are different sizes in synthetic")
+            format_samples = []
+            for i in range(MAX_STRING_LEN):
+                format_samples.append(pyro.sample(f"{CHAR_FORMAT_ADD}_{i}",
+                                                  dist.Categorical(torch.tensor(character_probs[i]).to(DEVICE))).item())
 
-            observation_probs, character_format_probs = generate_obs_and_char_probs(noised_full_name, noised_character_classes,
-                                                                                    self.peak_prob)
+            observation_samples = pyro.sample("output",
+                                              dist.Categorical(
+                                                  torch.tensor(observation_probs[:MAX_STRING_LEN]).to(DEVICE)),
+                                              obs=observations["output"])
 
-            obs_len = len(observation_probs)
-            for i in range(obs_len):
-                curr_format = pyro.sample(f"{CHAR_FORMAT_ADD}_{i}",
-                                          dist.Categorical(torch.tensor(character_format_probs[i]).to(DEVICE)))
+        parse = {'firstname': firstname, 'middlename': middlename, 'lastname': lastname, 'title': title,
+                 'suffix': suffix}
 
-            pyro.sample("output", dist.Categorical(torch.tensor(observation_probs[:obs_len]).to(DEVICE)),
-                        obs=observations["output"])
-
-        parse = {'firstname': firstname, 'middlename': middlenames, 'lastname': lastname}
+        print("full name: {}, format probs: {}".format(
+            "".join(PRINTABLE[observation_samples[i].item()] for i in range(len(observation_samples))).replace(PAD, ''),
+            "".join(FORMAT_CLASS[format_samples[i]] for i in range(len(format_samples))).replace(PAD, '')))
 
         print(
-            "first name: {}, middle name: {}, last name: {}, middle name format: {}, main format: {}".format(
-                firstname, middlenames, lastname, middle_name_format_id, main_format_id))
+            "first name: {}, middle name: {}, last name: {}, title: {}, suffix: {}, middle name format: {}, main format: {}, aux format: {} \n".format(
+                firstname, middlename, lastname, title, suffix, middle_name_format_id, main_format_id, aux_format_id))
 
         return full_name, parse
 
     def guide(self, observations=None):
         X = observations['output']
+        X_len = len(X)
+        X_unpadded_len = X_len - (X == PRINTABLE.index(PAD)).sum(dim=0).item()
+        X_unpadded_tensor = torch.IntTensor([X_unpadded_len]).to(DEVICE)
 
         # Infer formats and parse
-        pyro.module("format_forward_lstm", self.guide_format.forward_lstm)
-        pyro.module("format_backward_lstm", self.guide_format.backward_lstm)
+        pyro.module("format_lstm", self.guide_format.lstm)
         pyro.module("format_fc1", self.guide_format.fc1)
+        pyro.module("format_fc2", self.guide_format.fc2)
         char_class_samples = self.guide_format.forward(X, CHAR_FORMAT_ADD)
 
-        _, first, middles, last, _ = parse_name(X, char_class_samples)
+        title, first, middles, last, suffix = parse_name(X, char_class_samples)
+        # print(f"GUIDE Parse: {parse_name(X, char_class_samples)}")
+        pyro.module("aux_format", self.guide_aux_format)
+        classify_using_format_model(self.guide_aux_format, X, X_unpadded_tensor, AUX_FORMAT_ADD)
 
-        # if len(title) > 0:
-        #     pyro.module("title", self.guide_title)
-        #     title_tensor = name_to_idx_tensor(title[0], PRINTABLE)
-        #     sample = classify_using_format_model(self.guide_title, title_tensor,
-        #                                          torch.IntTensor([len(title_tensor)]).to(DEVICE), TITLE_ADD)
-        #     title = TITLE[sample]
+        pyro.module("main_format", self.guide_main_format)
+        classify_using_format_model(self.guide_main_format, X, X_unpadded_tensor, MAIN_FORMAT_ADD)
 
-        # if len(suffix) > 0:
-        #     pyro.module("suffix", self.guide_suffix)
-        #     suffix_tensor = name_to_idx_tensor(suffix[0], PRINTABLE)
-        #     sample = classify_using_format_model(self.guide_suffix, suffix_tensor,
-        #                                          torch.IntTensor([len(suffix_tensor)]).to(DEVICE), SUFFIX_ADD)
-        #     suffix = SUFFIX[sample]
+        if len(title) > 0:
+            pyro.module("title", self.guide_title)
+            title_tensor = name_to_idx_tensor(title[0], PRINTABLE)
+            sample = classify_using_format_model(self.guide_title, title_tensor,
+                                                 torch.IntTensor([len(title_tensor)]).to(DEVICE), TITLE_ADD)
+            title = TITLE[sample]
+
+        if len(suffix) > 0:
+            pyro.module("suffix", self.guide_suffix)
+            suffix_tensor = name_to_idx_tensor(suffix[0], PRINTABLE)
+            sample = classify_using_format_model(self.guide_suffix, suffix_tensor,
+                                                 torch.IntTensor([len(suffix_tensor)]).to(DEVICE), SUFFIX_ADD)
+            suffix = SUFFIX[sample]
 
         if len(first) > 0:
             pyro.module("first_name", self.guide_fn)
@@ -230,6 +210,10 @@ class NameParser():
         middle_names = []
         if len(middles) > 0:
             pyro.module("first_name", self.guide_fn)
+            pyro.module("middle_name_format", self.guide_mn_format)
+            classify_using_format_model(self.guide_mn_format, X, torch.IntTensor([len(X)]).to(DEVICE),
+                                        MIDDLE_FORMAT_ADD)
+
             for i in range(len(middles)):
                 input = name_to_idx_tensor(middles[i], self.guide_fn.input)
                 samples = self.guide_fn.forward(input, f"{MIDDLE_NAME_ADD}_{i}")
@@ -243,7 +227,7 @@ class NameParser():
 
         # TODO!!! Have to add full name reconstruction
 
-        return {'firstname': first, 'middlename': middle_names, 'lastname': last}
+        return {'firstname': first, 'middlename': middle_names, 'lastname': last, 'title': title, 'suffix': suffix}
 
     def infer(self, names: list):
         # Infer using q(z|x)
@@ -261,19 +245,30 @@ class NameParser():
             results.append(self.model()[0])
         return results
 
+    def test_mode(self):
+        self.guide_format.eval()
+        self.guide_aux_format.eval()
+        self.guide_main_format.eval()
+        self.guide_mn_format.eval()
+        self.guide_title.eval()
+        self.guide_suffix.eval()
+
     def get_observes(self, name_string: str):
         if len(name_string) > MAX_STRING_LEN: raise Exception(f"Name string length cannot exceed {MAX_STRING_LEN}.")
         name_as_list = [c for c in name_string]
-        return name_to_idx_tensor(name_as_list, PRINTABLE)
+        return name_to_idx_tensor(name_as_list, PRINTABLE, max_length=True)
 
     def load_checkpoint(self, folder="nn_model", filename="checkpoint.pth.tar"):
         name_fp = os.path.join(folder, "name_" + filename)
         format_fp = os.path.join(folder, "format_" + filename)
+        noise_fp = os.path.join(folder, "noise_" + filename)
         title_suffix_fp = os.path.join(folder, "title_suffix_" + filename)
-        if not os.path.exists(name_fp) or not os.path.exists(format_fp) or not os.path.exists(title_suffix_fp):
+        if not os.path.exists(name_fp) or not os.path.exists(format_fp) or not os.path.exists(
+                noise_fp) or not os.path.exists(title_suffix_fp):
             raise Exception(f"No model in path {folder}")
         name_content = torch.load(name_fp, map_location=DEVICE)
         format_content = torch.load(format_fp, map_location=DEVICE)
+        noise_content = torch.load(noise_fp, map_location=DEVICE)
         title_suffix_content = torch.load(title_suffix_fp, map_location=DEVICE)
         # name content
         self.guide_fn.load_state_dict(name_content['guide_fn'])
@@ -283,11 +278,17 @@ class NameParser():
         self.guide_suffix.load_state_dict(title_suffix_content['suffix'])
         # format content
         self.guide_format.load_state_dict(format_content['guide_format'])
+        self.guide_aux_format.load_state_dict(format_content['aux_format'])
+        self.guide_main_format.load_state_dict(format_content['main_format'])
+        self.guide_mn_format.load_state_dict(format_content['middle_name_format'])
+        # noise format
+        self.guide_noise.load_state_dict(noise_content['guide_noise'])
 
     def save_checkpoint(self, folder="nn_model", filename="checkpoint.pth.tar"):
         name_fp = os.path.join(folder, "name_" + filename)
         title_suffix_fp = os.path.join(folder, "title_suffix_" + filename)
         format_fp = os.path.join(folder, "format_" + filename)
+        noise_fp = os.path.join(folder, "noise_" + filename)
         if not os.path.exists(folder):
             os.mkdir(folder)
         name_content = {
@@ -300,7 +301,14 @@ class NameParser():
         }
         format_content = {
             'guide_format': self.guide_format.state_dict(),
+            'aux_format': self.guide_aux_format.state_dict(),
+            'main_format': self.guide_main_format.state_dict(),
+            'middle_name_format': self.guide_mn_format.state_dict(),
+        }
+        noise_content = {
+            'guide_noise': self.guide_noise.state_dict(),
         }
         torch.save(name_content, name_fp)
         torch.save(format_content, format_fp)
+        torch.save(noise_content, noise_fp)
         torch.save(title_suffix_content, title_suffix_fp)

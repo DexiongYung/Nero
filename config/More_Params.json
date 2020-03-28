@@ -1,0 +1,11 @@
+{
+  "session_name": "More_Params",
+  "format_hidden_size": 128,
+  "rnn_hidden_size": 400,
+  "rnn_num_layers": 5,
+  "char_error_rate": 0.0,
+  "lr": 0.001,
+  "num_steps": 50000,
+  "num_particles": 10,
+  "noise_probs": 0.15
+}
