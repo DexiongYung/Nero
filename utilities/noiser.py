@@ -56,7 +56,7 @@ CHARACTER_REPLACEMENT['w'] = 'saq23eW'
 CHARACTER_REPLACEMENT['x'] = 'zsdcX'
 CHARACTER_REPLACEMENT['y'] = 'uhgt67Y'
 CHARACTER_REPLACEMENT['z'] = 'xsaZ'
-CHARACTER_REPLACEMENT['1'] = '2q'
+CHARACTER_REPLACEMENT['1'] = '2q~`'
 CHARACTER_REPLACEMENT['2'] = '3wq1'
 CHARACTER_REPLACEMENT['3'] = '4ew2'
 CHARACTER_REPLACEMENT['4'] = '5re3'
@@ -67,6 +67,7 @@ CHARACTER_REPLACEMENT['8'] = '9iu7'
 CHARACTER_REPLACEMENT['9'] = '0oi8'
 CHARACTER_REPLACEMENT['0'] = '-po9'
 CHARACTER_REPLACEMENT['-'] = '_=+~'
+CHARACTER_REPLACEMENT['.'] = ',\';`'
 
 
 def noise_name(x: str, allowed_chars: str, max_noise: int = 2):
@@ -142,10 +143,6 @@ def switch_to_similar(x: str, allowed_chars: str, max_switch: int):
     for i in range(num_switch):
         pos = distributions.Categorical(torch.tensor([1 / x_length] * x_length)).sample().item()
         current_char = x[pos]
-
-        if current_char not in CHARACTER_REPLACEMENT:
-            continue
-        
         replacements = CHARACTER_REPLACEMENT[x[pos]]
         replacements_length = len(replacements)
         random_char = replacements[
