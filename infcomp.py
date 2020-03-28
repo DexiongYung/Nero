@@ -45,7 +45,6 @@ class NameParser():
         self.guide_ln = DenoisingAutoEncoder(PRINTABLE, self.output_chars, hidden_sz, num_layers)
         # Format classifier neural networks
         self.guide_format = NameCharacterClassifierModel(PRINTABLE, hidden_sz, FORMAT_CLASS)
-        self.guide_noise = CharacterClassificationModel(PRINTABLE, hidden_sz, NOISE_CLASS)
         # Title / Suffix classifier neural networks
         self.guide_title = NameFormatModel(PRINTABLE, hidden_sz=hidden_sz, output_sz=len(TITLE))
         self.guide_suffix = NameFormatModel(PRINTABLE, hidden_sz=hidden_sz, output_sz=len(SUFFIX))
@@ -261,15 +260,15 @@ class NameParser():
     def load_checkpoint(self, folder="nn_model", filename="checkpoint.pth.tar"):
         name_fp = os.path.join(folder, "name_" + filename)
         format_fp = os.path.join(folder, "format_" + filename)
-        noise_fp = os.path.join(folder, "noise_" + filename)
         title_suffix_fp = os.path.join(folder, "title_suffix_" + filename)
-        if not os.path.exists(name_fp) or not os.path.exists(format_fp) or not os.path.exists(
-                noise_fp) or not os.path.exists(title_suffix_fp):
+        
+        if not os.path.exists(name_fp) or not os.path.exists(format_fp) or not os.path.exists(title_suffix_fp):
             raise Exception(f"No model in path {folder}")
+        
         name_content = torch.load(name_fp, map_location=DEVICE)
         format_content = torch.load(format_fp, map_location=DEVICE)
-        noise_content = torch.load(noise_fp, map_location=DEVICE)
         title_suffix_content = torch.load(title_suffix_fp, map_location=DEVICE)
+
         # name content
         self.guide_fn.load_state_dict(name_content['guide_fn'])
         self.guide_ln.load_state_dict(name_content['guide_ln'])
@@ -281,16 +280,15 @@ class NameParser():
         self.guide_aux_format.load_state_dict(format_content['aux_format'])
         self.guide_main_format.load_state_dict(format_content['main_format'])
         self.guide_mn_format.load_state_dict(format_content['middle_name_format'])
-        # noise format
-        self.guide_noise.load_state_dict(noise_content['guide_noise'])
 
     def save_checkpoint(self, folder="nn_model", filename="checkpoint.pth.tar"):
         name_fp = os.path.join(folder, "name_" + filename)
         title_suffix_fp = os.path.join(folder, "title_suffix_" + filename)
         format_fp = os.path.join(folder, "format_" + filename)
-        noise_fp = os.path.join(folder, "noise_" + filename)
+
         if not os.path.exists(folder):
             os.mkdir(folder)
+        
         name_content = {
             'guide_fn': self.guide_fn.state_dict(),
             'guide_ln': self.guide_ln.state_dict(),
@@ -305,10 +303,6 @@ class NameParser():
             'main_format': self.guide_main_format.state_dict(),
             'middle_name_format': self.guide_mn_format.state_dict(),
         }
-        noise_content = {
-            'guide_noise': self.guide_noise.state_dict(),
-        }
         torch.save(name_content, name_fp)
         torch.save(format_content, format_fp)
-        torch.save(noise_content, noise_fp)
         torch.save(title_suffix_content, title_suffix_fp)
