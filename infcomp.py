@@ -104,7 +104,7 @@ class NameParser():
                         middlename = sample_name(self.model_fn, f"{MIDDLE_NAME_ADD}_{i}")
                     middlenames.append(middlename)
 
-            allowed_noise = [c for c in string.ascii_letters + string.digits + string.punctuation]
+            allowed_noise = [c for c in string.ascii_letters + string.digits]
             noised_first = noise_name(firstname, allowed_noise)
             noised_last = noise_name(lastname, allowed_noise)
             noised_title, noised_suffix = None, None
@@ -131,7 +131,7 @@ class NameParser():
                 middle_section = generate_middle_name(middle_name_format_id, noised_middles)
                 middle_char_class = generate_middle_name_char_class(middle_name_format_id, noised_middles)
 
-                full_name = full_name.format(middle=middle_section)
+                full_name = full_name.replace(middle=middle_section)
                 character_classes = character_classes.format(middle=middle_char_class)
 
             if len(full_name) != len(character_classes):
