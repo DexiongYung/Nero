@@ -28,6 +28,10 @@ class DenoisingAutoEncoder(nn.Module):
 
         for i in range(len(input)):
             printable_idx = input[i].item()
+            printable_char = PRINTABLE[printable_idx]
+
+            if printable_char not in string.ascii_letters + '\'-':
+                continue
 
             _, hidden = self.encoder.forward(torch.LongTensor([printable_idx]).unsqueeze(1).to(DEVICE), hidden)
 
