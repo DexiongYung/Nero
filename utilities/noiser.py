@@ -1,4 +1,5 @@
 import math
+import string
 import torch
 import torch.distributions as distributions
 from random import randint
@@ -71,21 +72,24 @@ CHARACTER_REPLACEMENT['.'] = ',\';`'
 CHARACTER_REPLACEMENT['\''] = '"`'
 
 
-def noise_name(x: str, allowed_chars: str, max_noise: int = 2):
-    noise_type = distributions.Categorical(torch.tensor([1 / 7] * 7)).sample().item()
-    x_length = len(x)
+def noise_name(x: str, allowed_chars: str):
+    x_len = len(x)
+    noise_type = distributions.Categorical(torch.tensor([1 / 6] * 6)).sample().item()
+    max_noise = distributions.Categorical(torch.tensor([1/x_len] * x_len)).sample().item()
     ret = x
 
-    if noise_type == 0:
+    if max_noise <= 0:
+        return ret
+    elif noise_type == 0:
         ret = add_chars(x, allowed_chars, max_add=max_noise)
     elif noise_type == 1:
         ret = switch_chars(x, allowed_chars, max_switch=max_noise)
-    elif noise_type == 2 and x_length != 1:
+    elif noise_type == 2:
         ret = remove_chars(x, max_remove=max_noise)
     elif noise_type == 3:
         ret = switch_to_similar(x, allowed_chars, max_switch=max_noise)
     elif noise_type == 4:
-        ret = remove_vowels(x)
+        ret = remove_vowels(x, max_noise)
     elif noise_type == 5:
         ret = remove_consenants(x, max_noise)
 
@@ -103,13 +107,17 @@ def noise_seperator(allowed_chars: str, x: str = " ", max_noise: int = 3):
     else:
         return x
 
-def remove_vowels(x:str):
+def remove_vowels(x:str, max_remove):
     vowels = 'aeiou'
     ret = ''
 
     for char in x:
         if char not in vowels:
             ret = ret + char
+            max_remove = max_remove - 1
+        
+        if max_remove < 1:
+            break
     
     return ret
 
@@ -117,10 +125,10 @@ def remove_consenants(x:str, max_remove:int):
     vowels = 'aeiou'
     ret = ''
     for char in x:
-        if char in vowels:
+        if char in vowels or char in string.ascii_uppercase:
             ret = ret + char
             max_remove = max_remove - 1
-        elif max_remove < 0:
+        elif max_remove < 1:
             break
     
     return ret
@@ -179,12 +187,6 @@ def switch_to_similar(x: str, allowed_chars: str, max_switch: int):
 
 def remove_chars(x: str, max_remove: int):
     ret = x
-    x_length = len(x)
-
-    if x_length == 1:
-        return x
-    elif x_length > max_remove:
-        max_remove = x_length - 2
 
     num_remove = distributions.Categorical(torch.tensor([1 / max_remove] * max_remove)).sample().item()
 
