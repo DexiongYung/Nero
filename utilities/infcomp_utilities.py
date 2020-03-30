@@ -246,24 +246,18 @@ def generate_probabilities(string: str, categorical: list, peak_prob: float):
 
 def generate_main_name(main_name_format_id: int, first: str, last: str):
     main_name = MAIN_CLASS[main_name_format_id]
-    has_middle = has_middle_name(main_name_format_id)
 
-    if has_middle:
-        main_name = main_name.format(first=first, last=last, middle='{middle}')
-    else:
-        main_name = main_name.format(first=first, last=last)
+    main_name = main_name.replace('{first}', first)
+    main_name = main_name.replace('{last}', last)
 
     return main_name
 
 
 def generate_main_name_char_class(main_name_format_id: int, first: str, last: str):
     main_name = MAIN_CLASS[main_name_format_id]
-    has_middle = has_middle_name(main_name_format_id)
-
-    if has_middle:
-        main_name = main_name.format(first=len(first) * 'f', last=len(last) * 'l', middle='{middle}')
-    else:
-        main_name = main_name.format(first=len(first) * 'f', last=len(last) * 'l')
+    
+    main_name = main_name.replace('{first}', len(first) * 'f') 
+    main_name = main_name.replace('{last}', len(last) * 'l')
 
     return main_name
 
@@ -274,11 +268,12 @@ def generate_aux_name(aux_format_id: int, title: str, suffix: str):
     aux_name = AUX_CLASS[aux_format_id]
 
     if is_title and is_suffix:
-        aux_name = aux_name.format(title=title, suffix=suffix, main='{main}')
+        aux_name = aux_name.replace('{title}',title) 
+        aux_name = aux_name.replace('{suffix}', suffix)
     elif is_title:
-        aux_name = aux_name.format(title=title, main='{main}')
+        aux_name = aux_name.replace('{title}', title)
     elif is_suffix:
-        aux_name = aux_name.format(suffix=suffix, main='{main}')
+        aux_name = aux_name.replace('{suffix}', suffix)
 
     return aux_name
 
@@ -289,11 +284,12 @@ def generate_aux_name_char_class(aux_format_id: int, title: str, suffix: str):
     aux_name = AUX_CLASS[aux_format_id]
 
     if is_title and is_suffix:
-        aux_name = aux_name.format(title=len(title) * 't', suffix=len(suffix) * 's', main='{main}')
+        aux_name = aux_name.replace('{title}', len(title) * 't') 
+        aux_name = aux_name.replace('{suffix}', len(suffix) * 's')
     elif is_title:
-        aux_name = aux_name.format(title=len(title) * 't', main='{main}')
+        aux_name = aux_name.replace('{title}', len(title) * 't')
     elif is_suffix:
-        aux_name = aux_name.format(suffix=len(suffix) * 's', main='{main}')
+        aux_name = aux_name.replace('{suffix}', len(suffix) * 's')
 
     return aux_name
 
@@ -305,14 +301,16 @@ def generate_middle_name(middle_name_format_id: int, middles: list):
 
     if middle_count == 2:
         if is_initial_form:
-            middle_name = middle_name.format(mn_init=middles[0], mn_init_1=middles[1])
+            middle_name = middle_name.replace('{mn_init}', middles[0])
+            middle_name = middle_name.replace('{mn_init_1}', middles[1])
         else:
-            middle_name = middle_name.format(mn=middles[0], mn_1=middles[1])
+            middle_name = middle_name.replace('{mn}', middles[0]) 
+            middle_name = middle_name.replace('{mn_1}', middles[1])
     else:
         if is_initial_form:
-            middle_name = middle_name.format(mn_init=middles[0])
+            middle_name = middle_name.replace('{mn_init}', middles[0])
         else:
-            middle_name = middle_name.format(mn=middles[0])
+            middle_name = middle_name.replace('{mn}', middles[0])
 
     return middle_name
 
@@ -324,13 +322,15 @@ def generate_middle_name_char_class(middle_name_format_id: int, middles: list):
 
     if middle_count == 2:
         if is_initial_form:
-            middle_name = middle_name.format(mn_init=len(middles[0]) * 'm', mn_init_1=len(middles[1]) * 'm')
+            middle_name = middle_name.replace('{mn_init}', len(middles[0]) * 'm') 
+            middle_name = middle_name.replace('{mn_init_1}', len(middles[1]) * 'm')
         else:
-            middle_name = middle_name.format(mn=len(middles[0]) * 'm', mn_1=len(middles[1]) * 'm')
+            middle_name = middle_name.replace('{mn}', len(middles[0]) * 'm')
+            middle_name = middle_name.replace('{mn_1}', len(middles[1]) * 'm')
     else:
         if is_initial_form:
-            middle_name = middle_name.format(mn_init=len(middles[0]) * 'm')
+            middle_name = middle_name.replace('{mn_init}', len(middles[0]) * 'm')
         else:
-            middle_name = middle_name.format(mn=len(middles[0]) * 'm')
+            middle_name = middle_name.replace('{mn}', len(middles[0]) * 'm')
 
     return middle_name
