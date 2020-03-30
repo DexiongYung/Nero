@@ -1,11 +1,1 @@
-{
-  "session_name": "UNNAMED_SESSION",
-  "format_hidden_size": 128,
-  "rnn_hidden_size": 256,
-  "rnn_num_layers": 4,
-  "char_error_rate": 0.0,
-  "lr": 0.001,
-  "num_steps": 50000,
-  "num_particles": 10,
-  "noise_probs": 0.1
-}
+{"session_name": "UNNAMED_SESSION", "format_hidden_size": 128, "rnn_hidden_size": 256, "rnn_num_layers": 4, "char_error_rate": 0.0, "lr": 0.001, "num_steps": 50000, "num_particles": 10, "noise_probs": 0.1}
