@@ -72,7 +72,7 @@ CHARACTER_REPLACEMENT['\''] = '"`'
 
 
 def noise_name(x: str, allowed_chars: str, max_noise: int = 2):
-    noise_type = distributions.Categorical(torch.tensor([1 / 5] * 5)).sample().item()
+    noise_type = distributions.Categorical(torch.tensor([1 / 7] * 7)).sample().item()
     x_length = len(x)
     ret = x
 
@@ -84,9 +84,12 @@ def noise_name(x: str, allowed_chars: str, max_noise: int = 2):
         ret = remove_chars(x, max_remove=max_noise)
     elif noise_type == 3:
         ret = switch_to_similar(x, allowed_chars, max_switch=max_noise)
+    elif noise_type == 4:
+        ret = remove_vowels(x)
+    elif noise_type == 5:
+        ret = remove_consenants(x, max_noise)
 
     return ret
-
 
 def noise_seperator(allowed_chars: str, x: str = " ", max_noise: int = 3):
     noise_type = distributions.Categorical(torch.tensor([1 / 5] * 4)).sample().item()
@@ -100,6 +103,27 @@ def noise_seperator(allowed_chars: str, x: str = " ", max_noise: int = 3):
     else:
         return x
 
+def remove_vowels(x:str):
+    vowels = 'aeiou'
+    ret = ''
+
+    for char in x:
+        if char not in vowels:
+            ret = ret + char
+    
+    return ret
+
+def remove_consenants(x:str, max_remove:int):
+    vowels = 'aeiou'
+    ret = ''
+    for char in x:
+        if char in vowels:
+            ret = ret + char
+            max_remove = max_remove - 1
+        elif max_remove < 0:
+            break
+    
+    return ret
 
 def add_chars(x: str, allowed_chars: str, max_add: int):
     ret = x
