@@ -121,8 +121,8 @@ class NameParser():
             aux_section = generate_aux_name(aux_format_id, noised_title, noised_suffix)
             aux_section_char_class = generate_aux_name_char_class(aux_format_id, noised_title, noised_suffix)
 
-            full_name = aux_section.format(main=main_section)
-            character_classes = aux_section_char_class.format(main=main_section_char_class)
+            full_name = aux_section.replace('{main}', main_section)
+            character_classes = aux_section_char_class.replace('{main}', main_section_char_class)
 
             noised_middles = []
             if has_middle:
@@ -131,8 +131,8 @@ class NameParser():
                 middle_section = generate_middle_name(middle_name_format_id, noised_middles)
                 middle_char_class = generate_middle_name_char_class(middle_name_format_id, noised_middles)
 
-                full_name = full_name.format(middle=middle_section)
-                character_classes = character_classes.format(middle=middle_char_class)
+                full_name = full_name.replace('{middle}', middle_section)
+                character_classes = character_classes.replace('{middle}', middle_char_class)
 
             if len(full_name) != len(character_classes):
                 raise Exception("Full name and character classes aren't the same length")
