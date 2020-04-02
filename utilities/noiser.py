@@ -176,7 +176,7 @@ def switch_to_similar(x: str, allowed_chars: str, max_switch: int):
     for i in range(num_switch):
         pos = distributions.Categorical(torch.tensor([1 / x_length] * x_length)).sample().item()
         current_char = x[pos]
-        replacements = CHARACTER_REPLACEMENT[x[pos]]
+        replacements = CHARACTER_REPLACEMENT[x[pos]] if x[pos] in CHARACTER_REPLACEMENT else x[pos]
         replacements_length = len(replacements)
         random_char = replacements[
             distributions.Categorical(torch.tensor([1 / replacements_length] * replacements_length)).sample().item()]
