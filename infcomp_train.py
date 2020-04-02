@@ -56,15 +56,18 @@ csis = pyro.infer.CSIS(name_parser.model, name_parser.guide, optimizer, training
 
 losses = []
 for step in range(args.num_steps):
-    loss = csis.step()
-    if step % 1 == 0:
-        print(f"step: {step} - loss: {loss}")
-        losses.append(loss)
-    if step > 0 and step % 10 == 0:
-        print(f"Saving plot to result/{SESSION_NAME}.png...")
-        plt.plot(losses)
-        plt.title("Infcomp Loss")
-        plt.xlabel("steps")
-        plt.ylabel("loss")
-        plt.savefig(f"result/{SESSION_NAME}.png")
-        name_parser.save_checkpoint(filename=f"{SESSION_NAME}.pth.tar")
+    try:
+        loss = csis.step()
+        if step % 1 == 0:
+            print(f"step: {step} - loss: {loss}")
+            losses.append(loss)
+        if step > 0 and step % 10 == 0:
+            print(f"Saving plot to result/{SESSION_NAME}.png...")
+            plt.plot(losses)
+            plt.title("Infcomp Loss")
+            plt.xlabel("steps")
+            plt.ylabel("loss")
+            plt.savefig(f"result/{SESSION_NAME}.png")
+            name_parser.save_checkpoint(filename=f"{SESSION_NAME}.pth.tar")
+    except RuntimeError:
+        continue
