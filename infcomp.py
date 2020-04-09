@@ -37,6 +37,8 @@ class NameParser():
         # Model neural nets instantiation
         self.model_fn = NameGenerator('config/first.json', 'nn_model/first.path.tar')
         self.model_ln = NameGenerator('config/last.json', 'nn_model/last.path.tar')
+        self.model_fn.eval()
+        self.model_ln.eval()
         # Guide neural nets instantiation
         """
         Output for pretrained LSTMS doesn't have SOS so just use PAD for SOS
