@@ -22,6 +22,7 @@ class NameGenerator():
         self.EOS = config['EOS']
 
         self.lstm = GenerativeModelLSTM(self.input_sz, self.hidden_sz, self.output_sz, self.embed_sz, self.num_layers)
+        self.lstm.eval()
 
         if weights_path is not None:
             self.load_weights(weights_path)
