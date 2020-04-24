@@ -2,7 +2,9 @@ import pyro
 import pyro.distributions as dist
 import re
 import torch
+import math
 from typing import Tuple
+from model.DenoisingAutoEncoder import DenoisingAutoEncoder
 
 from const import *
 
@@ -17,12 +19,16 @@ MAIN_FORMAT_ADD = "main_format_id"
 TITLE_ADD = "title"
 SUFFIX_ADD = "suffix"
 
-AUX_CLASS = ['{main}', '{title} {main}', '{main} {suffix}', '{title} {main} {suffix}']
-MAIN_CLASS = ['{first} {last}', '{last}, {first}', '{first} {middle} {last}', '{last}, {first} {middle}']
+AUX_CLASS = ['{main}', '{title} {main}',
+             '{main} {suffix}', '{title} {main} {suffix}']
+MAIN_CLASS = ['{first} {last}', '{last}, {first}',
+              '{first} {middle} {last}', '{last}, {first} {middle}']
 MIDDLE_FORMAT_CLASS = ['{mn_init}.', '{mn_init}. {mn_init_1}.', '{mn_init}', '{mn_init} {mn_init_1}', '{mn}',
                        '{mn} {mn_1}']
-TITLE = ['Mr', 'Mr.', 'Ms', 'Ms.', 'Mrs', 'Mrs.', 'Dr', 'Dr.', 'Sir', "Ma'am", 'Madam']
-SUFFIX = ['Sr', 'Sr.', 'Snr', 'Jr', 'Jr.', 'Jnr', 'Phd', 'phd', 'md', 'MD', 'I', 'II', 'III', 'IV']
+TITLE = ['Mr', 'Mr.', 'Ms', 'Ms.', 'Mrs',
+         'Mrs.', 'Dr', 'Dr.', 'Sir', "Ma'am", 'Madam']
+SUFFIX = ['Sr', 'Sr.', 'Snr', 'Jr', 'Jr.', 'Jnr',
+          'Phd', 'phd', 'md', 'MD', 'I', 'II', 'III', 'IV']
 FORMAT_CLASS = ['t', 'f', 'm', 'l', 's', SPACE, DOT, COMMA, PAD, SOS]
 # title, first, middle, last, suffix, 'separator', pad, SOS, EOS just for consistency. SOS is required for Transformer
 NOISE_CLASS = ['n', 'a', 'r', 'd', PAD, SOS, EOS]
@@ -32,9 +38,12 @@ AUX_FORMAT_DIM = len(AUX_CLASS)
 MAIN_FORMAT_DIM = len(MAIN_CLASS)
 MIDDLE_NAME_FORMAT_DIM = len(MIDDLE_FORMAT_CLASS)
 
-MAIN_FORMAT_PROBS = torch.tensor([1 / MAIN_FORMAT_DIM] * MAIN_FORMAT_DIM).to(DEVICE)
-AUX_FORMAT_PROBS = torch.tensor([1 / AUX_FORMAT_DIM] * AUX_FORMAT_DIM).to(DEVICE)
-MIDDLE_NAME_FORMAT_PROBS = torch.tensor([1 / MIDDLE_NAME_FORMAT_DIM] * MIDDLE_NAME_FORMAT_DIM).to(DEVICE)
+MAIN_FORMAT_PROBS = torch.tensor(
+    [1 / MAIN_FORMAT_DIM] * MAIN_FORMAT_DIM).to(DEVICE)
+AUX_FORMAT_PROBS = torch.tensor(
+    [1 / AUX_FORMAT_DIM] * AUX_FORMAT_DIM).to(DEVICE)
+MIDDLE_NAME_FORMAT_PROBS = torch.tensor(
+    [1 / MIDDLE_NAME_FORMAT_DIM] * MIDDLE_NAME_FORMAT_DIM).to(DEVICE)
 TITLE_PROBS = torch.tensor([1 / len(TITLE)] * len(TITLE)).to(DEVICE)
 SUFFIX_PROBS = torch.tensor([1 / len(SUFFIX)] * len(SUFFIX)).to(DEVICE)
 
@@ -49,16 +58,19 @@ def generate_main_name(firstname: str, middlename: str, lastname: str, main_form
     char_format = full_name
 
     if has_middle and middlename_char_format is None:
-        raise Exception(f"Is middle name format {main_format_id} but missing char format")
+        raise Exception(
+            f"Is middle name format {main_format_id} but missing char format")
 
     if has_middle and middle_name_format is not None:
-        full_name = full_name.format(first=firstname, middle=middlename, last=lastname)
+        full_name = full_name.format(
+            first=firstname, middle=middlename, last=lastname)
         middle_name_format_str = "".join(c for c in middlename_char_format)
         char_format = char_format.format(first=len(firstname) * "f", middle=middle_name_format_str,
                                          last=len(lastname) * "l")
     else:
         full_name = full_name.format(first=firstname, last=lastname)
-        char_format = char_format.format(first=len(firstname) * 'f', last=len(lastname) * 'l')
+        char_format = char_format.format(
+            first=len(firstname) * 'f', last=len(lastname) * 'l')
 
     char_format = [c for c in char_format]
 
@@ -66,7 +78,7 @@ def generate_main_name(firstname: str, middlename: str, lastname: str, main_form
 
 
 def generate_aux_name(title: str, name: str, suffix: str, aux_format_id: int, main_char_format: list) -> Tuple[
-    str, list]:
+        str, list]:
     is_title_format = has_title(aux_format_id)
     is_suffix_format = has_suffix(aux_format_id)
 
@@ -78,7 +90,8 @@ def generate_aux_name(title: str, name: str, suffix: str, aux_format_id: int, ma
 
     if is_suffix_format and is_title_format:
         full_name = full_name.format(title=title, main=name, suffix=suffix)
-        char_format = ['t'] * len(title) + [SPACE] + main_char_format + [SPACE] + ['s'] * len(suffix)
+        char_format = ['t'] * len(title) + [SPACE] + \
+            main_char_format + [SPACE] + ['s'] * len(suffix)
     elif is_suffix_format:
         full_name = full_name.format(main=name, suffix=suffix)
         char_format = main_char_format + [SPACE] + ['s'] * len(suffix)
@@ -106,7 +119,8 @@ def sample_name(lstm, pyro_address_prefix) -> str:
 
         output = torch.softmax(output, dim=2)[0][0]
 
-        char_idx = int(pyro.sample(f"{pyro_address_prefix}_{i}", dist.Categorical(output)).item())
+        char_idx = int(pyro.sample(
+            f"{pyro_address_prefix}_{i}", dist.Categorical(output)).item())
         character = lstm.output[char_idx]
         if char_idx is lstm.output.index(lstm.EOS):
             break
@@ -143,7 +157,8 @@ def parse_name(obs: torch.Tensor, classification: list):
         elif i == 1:
             firsts = create_name_list(start, end, obs, classification, i)
         elif i == 2:
-            middles = create_name_list(start, end, obs, classification, i, True)
+            middles = create_name_list(
+                start, end, obs, classification, i, True)
         elif i == 3:
             lasts = create_name_list(start, end, obs, classification, i)
         elif i == 4:
@@ -236,7 +251,8 @@ def generate_probabilities(string: str, categorical: list, peak_prob: float):
     probs = []
 
     for i in range(string_length):
-        current_prob = [(1 - peak_prob) / (categorical_length - 1)] * categorical_length
+        current_prob = [(1 - peak_prob) /
+                        (categorical_length - 1)] * categorical_length
         character_idx = categorical.index(string[i])
         current_prob[character_idx] = peak_prob
         probs.append(current_prob)
@@ -255,8 +271,8 @@ def generate_main_name(main_name_format_id: int, first: str, last: str):
 
 def generate_main_name_char_class(main_name_format_id: int, first: str, last: str):
     main_name = MAIN_CLASS[main_name_format_id]
-    
-    main_name = main_name.replace('{first}', len(first) * 'f') 
+
+    main_name = main_name.replace('{first}', len(first) * 'f')
     main_name = main_name.replace('{last}', len(last) * 'l')
 
     return main_name
@@ -268,7 +284,7 @@ def generate_aux_name(aux_format_id: int, title: str, suffix: str):
     aux_name = AUX_CLASS[aux_format_id]
 
     if is_title and is_suffix:
-        aux_name = aux_name.replace('{title}',title) 
+        aux_name = aux_name.replace('{title}', title)
         aux_name = aux_name.replace('{suffix}', suffix)
     elif is_title:
         aux_name = aux_name.replace('{title}', title)
@@ -284,7 +300,7 @@ def generate_aux_name_char_class(aux_format_id: int, title: str, suffix: str):
     aux_name = AUX_CLASS[aux_format_id]
 
     if is_title and is_suffix:
-        aux_name = aux_name.replace('{title}', len(title) * 't') 
+        aux_name = aux_name.replace('{title}', len(title) * 't')
         aux_name = aux_name.replace('{suffix}', len(suffix) * 's')
     elif is_title:
         aux_name = aux_name.replace('{title}', len(title) * 't')
@@ -304,7 +320,7 @@ def generate_middle_name(middle_name_format_id: int, middles: list):
             middle_name = middle_name.replace('{mn_init}', middles[0])
             middle_name = middle_name.replace('{mn_init_1}', middles[1])
         else:
-            middle_name = middle_name.replace('{mn}', middles[0]) 
+            middle_name = middle_name.replace('{mn}', middles[0])
             middle_name = middle_name.replace('{mn_1}', middles[1])
     else:
         if is_initial_form:
@@ -322,15 +338,80 @@ def generate_middle_name_char_class(middle_name_format_id: int, middles: list):
 
     if middle_count == 2:
         if is_initial_form:
-            middle_name = middle_name.replace('{mn_init}', len(middles[0]) * 'm') 
-            middle_name = middle_name.replace('{mn_init_1}', len(middles[1]) * 'm')
+            middle_name = middle_name.replace(
+                '{mn_init}', len(middles[0]) * 'm')
+            middle_name = middle_name.replace(
+                '{mn_init_1}', len(middles[1]) * 'm')
         else:
             middle_name = middle_name.replace('{mn}', len(middles[0]) * 'm')
             middle_name = middle_name.replace('{mn_1}', len(middles[1]) * 'm')
     else:
         if is_initial_form:
-            middle_name = middle_name.replace('{mn_init}', len(middles[0]) * 'm')
+            middle_name = middle_name.replace(
+                '{mn_init}', len(middles[0]) * 'm')
         else:
             middle_name = middle_name.replace('{mn}', len(middles[0]) * 'm')
 
     return middle_name
+
+
+def top_k_beam_search(decoder: DenoisingAutoEncoder, hidden: torch.Tensor, k: int, penalty: float = 0.0):
+    decoder_output = decoder.output
+    decoder_output_sz = decoder.output_sz
+
+    output, hidden = decoder.decode(None, hidden)
+    probs = output.reshape(decoder_output_sz)
+    EOS_idx = decoder_output.index(EOS)
+    probs[EOS_idx] = 0
+    top_k_probs, top_k_idx = torch.topk(probs, k, dim=0)
+
+    top_k = []
+    for i in range(len(top_k_idx)):
+        prev_char = decoder_output[top_k_idx[i].item()]
+
+        if i == 0:
+            top_k.append(
+                ([prev_char], -math.log(top_k_probs[i].item()) + penalty, hidden))
+        else:
+            top_k.append(
+                ([prev_char], -math.log(top_k_probs[i].item()), hidden))
+
+    while not is_EOS_in_all_topk(top_k):
+        hypotheses = []
+
+        for name, score, hidden in top_k:
+            if EOS in name:
+                hidden_clone = (hidden[0].clone(), hidden[1].clone())
+                hypotheses.append((name.copy(), score, hidden_clone))
+            else:
+                prev_char = name[-1]
+                probs, hidden = decoder.decode(prev_char, hidden)
+                top_k_probs, top_k_idx = torch.topk(probs, k, dim=2)
+                top_k_probs = top_k_probs.reshape(k)
+                top_k_idx = top_k_idx.reshape(k)
+                hidden_clone = (hidden[0].clone(), hidden[1].clone())
+
+                for i in range(len(top_k_probs)):
+                    current_char = decoder_output[top_k_idx[i]]
+                    current_prob = top_k_probs[i]
+                    name_copy = name.copy()
+                    name_copy.append(current_char)
+                    new_score = score + -math.log(current_prob)
+
+                    hypotheses.append((name_copy, new_score, hidden_clone))
+
+        hypotheses.sort(key=lambda x: x[1])
+        top_k = hypotheses[:k]
+        top_k[0] = top_k[0][0], top_k[0][1] + penalty, top_k[0][2]
+
+    return top_k
+
+
+def is_EOS_in_all_topk(topk: list):
+    '''
+        Topk contains a tuple of (name, score, hidden state)
+    '''
+    for name, _, _ in topk:
+        if EOS not in name:
+            return False
+    return True
