@@ -182,14 +182,10 @@ def sample_insertion_edit(char: str, chars_in_word: list):
 
 def noise_name(name: str):
     name_len = len(name)
-
-    if name_len == 1:
-        return name
-
     noised_name = ''
     char_list = [c for c in name]
     num_edits = sample_number_edits(name_len)
-    char_edit_probs = torch.FloatTensor([num_edits/ name_len])
+    char_edit_probs = torch.FloatTensor([num_edits/ name_len]) if num_edits < name_len else torch.FloatTensor([0.5])
 
     edit_cate_dist = torch.FloatTensor(edit[f'edit_cate_{name_len}'])
 
