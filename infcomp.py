@@ -12,7 +12,7 @@ from model.FormatModel import NameFormatModel
 from model.NameCharacterClassifierModel import NameCharacterClassifierModel
 from utilities.config import *
 from utilities.infcomp_utilities import *
-from utilities.noiser import noise_name, noise_seperator
+from utilities.Prob_Prog_Model import noise_name
 
 
 class NameParser():
@@ -119,15 +119,15 @@ class NameParser():
                     middlenames.append(middlename)
 
             allowed_noise = [c for c in string.ascii_letters + string.digits]
-            noised_first = noise_name(firstname, allowed_noise)
-            noised_last = noise_name(lastname, allowed_noise)
+            noised_first = noise_name(firstname)
+            noised_last = noise_name(lastname)
             noised_title, noised_suffix = None, None
 
             if is_suffix:
-                noised_suffix = noise_name(suffix, allowed_noise)
+                noised_suffix = noise_name(suffix)
 
             if is_title:
-                noised_title = noise_name(title, allowed_noise)
+                noised_title = noise_name(title)
 
             main_section = generate_main_name(
                 main_format_id, noised_first, noised_last)
@@ -147,7 +147,7 @@ class NameParser():
             if has_middle:
                 for i in range(len(middlenames)):
                     noised_middles.append(noise_name(
-                        middlenames[i], allowed_noise))
+                        middlenames[i]))
                 middle_section = generate_middle_name(
                     middle_name_format_id, noised_middles)
                 middle_char_class = generate_middle_name_char_class(

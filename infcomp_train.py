@@ -10,7 +10,7 @@ pyro.enable_validation(True)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--name', help='Name of the Session',
-                    nargs='?', default='upped_params', type=str)
+                    nargs='?', default='prob_prog', type=str)
 parser.add_argument('--rnn_hidden_size',
                     help='Size of RNN hidden layers', nargs='?', default=512, type=int)
 parser.add_argument('--format_hidden_size',
