@@ -9,23 +9,26 @@ from utilities.config import save_json
 pyro.enable_validation(True)
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--name', help='Name of the Session', nargs='?', default='UNNAMED_SESSION', type=str)
-parser.add_argument('--rnn_hidden_size', help='Size of RNN hidden layers', nargs='?', default=256, type=int)
-parser.add_argument('--format_hidden_size', help='Hidden size for format models', nargs='?', default=128, type=int)
-parser.add_argument('--rnn_num_layers', help='Number of RNNs to stack', nargs='?', default=4, type=int)
+parser.add_argument('--name', help='Name of the Session',
+                    nargs='?', default='upped_params', type=str)
+parser.add_argument('--rnn_hidden_size',
+                    help='Size of RNN hidden layers', nargs='?', default=512, type=int)
+parser.add_argument('--format_hidden_size',
+                    help='Hidden size for format models', nargs='?', default=256, type=int)
+parser.add_argument('--rnn_num_layers',
+                    help='Number of RNNs to stack', nargs='?', default=6, type=int)
 parser.add_argument('--char_error_rate', help="Probability of randomly permuting a single character in the likelihood",
                     nargs='?', default=0., type=float)
-parser.add_argument('--lr', help='Learning rate', nargs='?', default=0.001, type=float)
-parser.add_argument('--num_particles', help='Number of particles to evaluate for loss', nargs='?', default=10, type=int)
-parser.add_argument('--num_steps', help='Number of gradient descent steps', nargs='?', default=50000, type=int)
+parser.add_argument('--lr', help='Learning rate',
+                    nargs='?', default=0.001, type=float)
+parser.add_argument('--num_particles', help='Number of particles to evaluate for loss',
+                    nargs='?', default=10, type=int)
+parser.add_argument('--num_steps', help='Number of gradient descent steps',
+                    nargs='?', default=50000, type=int)
 parser.add_argument('--continue_training',
                     help='An int deciding whether to keep training the model with config name, 0=False, 1=True',
                     nargs='?',
                     default=0, type=int)
-parser.add_argument('--noise_prob',
-                    help='The percent of noising per name generation',
-                    nargs='?',
-                    default=0.1, type=float)
 
 # Parse optional args from command line and save the configurations into a JSON file
 args = parser.parse_args()
@@ -38,21 +41,20 @@ to_save = {
     'char_error_rate': args.char_error_rate,
     'lr': args.lr,
     'num_steps': args.num_steps,
-    'num_particles': args.num_particles,
-    'noise_probs': args.noise_prob
+    'num_particles': args.num_particles
 }
 
 save_json(f'config/{SESSION_NAME}.json', to_save)
 
 name_parser = NameParser(num_layers=args.rnn_num_layers, hidden_sz=args.rnn_hidden_size,
-                         peak_prob=1. - args.char_error_rate, noise_prob=args.noise_prob,
-                         format_hidden_sz=args.format_hidden_size)
+                         peak_prob=1. - args.char_error_rate, format_hidden_sz=args.format_hidden_size)
 optimizer = pyro.optim.Adam({'lr': args.lr})
 
 if args.continue_training == 1:
     name_parser.load_checkpoint(filename=f"{SESSION_NAME}.pth.tar")
 
-csis = pyro.infer.CSIS(name_parser.model, name_parser.guide, optimizer, training_batch_size=args.num_particles)
+csis = pyro.infer.CSIS(name_parser.model, name_parser.guide,
+                       optimizer, training_batch_size=args.num_particles)
 
 losses = []
 for step in range(args.num_steps):

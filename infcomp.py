@@ -27,8 +27,7 @@ class NameParser():
     peak_prob: The max expected probability
     """
 
-    def __init__(self, num_layers: int, hidden_sz: int, format_hidden_sz: int, peak_prob: float = 0.99,
-                 noise_prob: int = 0.1):
+    def __init__(self, num_layers: int, hidden_sz: int, format_hidden_sz: int, peak_prob: float = 0.99):
         super().__init__()
         # Load up BART output vocab to correlate with name generative models.
         config = load_json('config/first.json')
@@ -65,7 +64,6 @@ class NameParser():
         self.peak_prob = peak_prob
         self.num_layers = num_layers
         self.hidden_sz = hidden_sz
-        self.noise_prob = noise_prob
 
     def model(self, observations={"output": 0}):
         with torch.no_grad():
@@ -248,11 +246,12 @@ class NameParser():
             classify_using_format_model(self.guide_mn_format, X, torch.IntTensor([len(X)]).to(DEVICE),
                                         MIDDLE_FORMAT_ADD)
 
-            for middle in middles:
+            for i in range(len(middles)):
+                middle = middles[i]
                 input = name_to_idx_tensor(middle, self.guide_fn.input)
                 samples = self.guide_fn.forward(
                     input, f"{MIDDLE_NAME_ADD}_{i}")
-                cleaned_middle.append(
+                cleaned_middles.append(
                     ''.join(self.output_chars[s] for s in samples))
 
         for last in lasts:
