@@ -183,7 +183,9 @@ def sample_insertion_edit(char: str, chars_in_word: list):
 def noise_name(name: str):
     name_len = len(name)
 
-    if name_len == 1:
+    is_noise = bool(torch.distributions.Categorical(torch.FloatTensor([0.5])).sample().item())
+
+    if name_len == 1 or is_noise:
         return name
 
     noised_name = ''

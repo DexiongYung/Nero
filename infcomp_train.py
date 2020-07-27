@@ -2,7 +2,6 @@ import argparse
 import matplotlib.pyplot as plt
 import pyro
 from pyro.infer import CSIS
-
 from infcomp import NameParser
 from utilities.config import save_json
 
@@ -28,7 +27,7 @@ parser.add_argument('--num_steps', help='Number of gradient descent steps',
 parser.add_argument('--continue_training',
                     help='An int deciding whether to keep training the model with config name, 0=False, 1=True',
                     nargs='?',
-                    default=0, type=int)
+                    default=True, type=bool)
 
 # Parse optional args from command line and save the configurations into a JSON file
 args = parser.parse_args()
@@ -50,7 +49,7 @@ name_parser = NameParser(num_layers=args.rnn_num_layers, hidden_sz=args.rnn_hidd
                          peak_prob=1. - args.char_error_rate, format_hidden_sz=args.format_hidden_size)
 optimizer = pyro.optim.Adam({'lr': args.lr})
 
-if args.continue_training == 1:
+if args.continue_training:
     name_parser.load_checkpoint(filename=f"{SESSION_NAME}.pth.tar")
 
 csis = pyro.infer.CSIS(name_parser.model, name_parser.guide,
