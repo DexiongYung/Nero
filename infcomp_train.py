@@ -25,7 +25,7 @@ parser.add_argument('--num_particles', help='Number of particles to evaluate for
 parser.add_argument('--num_steps', help='Number of gradient descent steps',
                     nargs='?', default=50000, type=int)
 parser.add_argument('--continue_training',
-                    help='An int deciding whether to keep training the model with config name, 0=False, 1=True',
+                    help='bool to continue training',
                     nargs='?',
                     default=True, type=bool)
 
