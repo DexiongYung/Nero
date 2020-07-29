@@ -11,11 +11,11 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--name', help='Name of the Session',
                     nargs='?', default='prob_prog', type=str)
 parser.add_argument('--rnn_hidden_size',
-                    help='Size of RNN hidden layers', nargs='?', default=512, type=int)
+                    help='Size of RNN hidden layers', nargs='?', default=256, type=int)
 parser.add_argument('--format_hidden_size',
-                    help='Hidden size for format models', nargs='?', default=256, type=int)
+                    help='Hidden size for format models', nargs='?', default=128, type=int)
 parser.add_argument('--rnn_num_layers',
-                    help='Number of RNNs to stack', nargs='?', default=6, type=int)
+                    help='Number of RNNs to stack', nargs='?', default=4, type=int)
 parser.add_argument('--char_error_rate', help="Probability of randomly permuting a single character in the likelihood",
                     nargs='?', default=0., type=float)
 parser.add_argument('--lr', help='Learning rate',
